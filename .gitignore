@@ -3,6 +3,7 @@
 .qt_for_python/
 __pycache__/
 venv/
+vipp_env/
 temp/
 code_gen/
 __own__/
