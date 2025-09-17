@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QSlider, QLineEdit
+from qtpy.QtWidgets import QSlider, QLineEdit, QTextEdit, QPushButton, QWidget, QVBoxLayout
 from qtpy.QtCore import Qt
 from ryven.gui_env import *
 from . import nodes
@@ -54,3 +54,32 @@ class TextInputNodeGui(NodeGUI):
     main_widget_class = TextInput_MainWidget
     main_widget_pos = 'between ports'
     color = '#88c0d0'
+
+class CodePaste_MainWidget(NodeMainWidget, QWidget):
+    def __init__(self, params):
+        NodeMainWidget.__init__(self, params)
+        QWidget.__init__(self)
+
+        self.editor = QTextEdit(self)
+        self.editor.setPlaceholderText('Paste your Node subclass code here...')
+        self.submit_btn = QPushButton('Submit', self)
+        self.submit_btn.clicked.connect(self.on_submit)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.editor)
+        layout.addWidget(self.submit_btn)
+        self.setLayout(layout)
+
+    def on_submit(self):
+        code_str = self.editor.toPlainText()
+        try:
+            self.node.append_user_code(code_str)
+        except Exception as e:
+            print(e)
+
+@node_gui(nodes.CodePasteNode)
+class CodePasteNodeGui(NodeGUI):
+    main_widget_class = CodePaste_MainWidget
+    main_widget_pos = 'between ports'
+    color = '#a3be8c'
