@@ -55,7 +55,7 @@ class TextInputNodeGui(NodeGUI):
     main_widget_pos = 'between ports'
     color = '#88c0d0'
 
-class CodePaste_MainWidget(NodeMainWidget, QWidget):
+class NodeGenerator_MainWidget(NodeMainWidget, QWidget):
     def __init__(self, params):
         NodeMainWidget.__init__(self, params)
         QWidget.__init__(self)
@@ -72,14 +72,14 @@ class CodePaste_MainWidget(NodeMainWidget, QWidget):
         self.setLayout(layout)
 
     def on_submit(self):
-        code_str = self.editor.toPlainText()
+        user_input_code = self.editor.toPlainText()
         try:
-            self.node.append_user_code(code_str)
+            self.node.append_user_code(user_input_code)
         except Exception as e:
             print(e)
 
-@node_gui(nodes.CodePasteNode)
-class CodePasteNodeGui(NodeGUI):
-    main_widget_class = CodePaste_MainWidget
+@node_gui(nodes.NodeGeneratorNode)
+class NodeGeneratorNodeGui(NodeGUI):
+    main_widget_class = NodeGenerator_MainWidget
     main_widget_pos = 'between ports'
     color = '#a3be8c'
