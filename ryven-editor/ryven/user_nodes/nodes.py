@@ -31,19 +31,20 @@ class TextInputNode(Node):
 # --- VIPP AUTO EXPORT MARKER ---
 
 class CodePasteNode(Node):
-    title = 'CodePaste'
+    title = 'Node Generator'
     tags = ['dev', 'generator']
     init_outputs = []
 
     def __init__(self, params):
         super().__init__(params)
 
-    def append_user_code(self, code_str: str):
+    def append_user_code(self, user_input_code: str):
         import os, ast
-        if not code_str or not code_str.strip():
+
+        if not user_input_code or not user_input_code.strip():
             return
         try:
-            ast.parse(code_str)
+            ast.parse(user_input_code)
         except Exception as e:
             print(f'Invalid user code: {e}')
             return
@@ -51,7 +52,7 @@ class CodePasteNode(Node):
         marker = '# --- VIPP AUTO EXPORT MARKER ---'
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        insert_block = '\n\n# --- BEGIN USER NODE ---\n' + code_str + ('' if code_str.endswith('\n') else '\n') + '# --- END USER NODE ---\n'
+        insert_block = '\n\n# --- BEGIN USER NODE ---\n' + user_input_code + ('' if user_input_code.endswith('\n') else '\n') + '# --- END USER NODE ---\n'
         if marker in content:
             idx = content.find(marker)
             new_content = content[:idx] + insert_block + content[idx:]
