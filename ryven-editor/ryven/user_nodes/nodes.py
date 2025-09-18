@@ -30,19 +30,24 @@ class TextInputNode(Node):
 
 
 ### USER NODES BEGIN ###
+class MultiplyNode(Node):
+    title = 'Multiply'
+    tags = ['math']
+    init_inputs = [NodeInputType()]      # x
+    init_outputs = [NodeOutputType()]    # y
 
-class ConcatNode(Node):
-    title = 'Concat'
-    tags = ['text']
-    init_inputs = [NodeInputType(), NodeInputType()]
-    init_outputs = [NodeOutputType()]
+    def __init__(self, params):
+        super().__init__(params)
+        self.k = 1.0
+
+    def set_k(self, value: float):
+        self.k = float(value)
+        self.update()
 
     def update_event(self, inp=-1):
-        a = self.input(0)
-        b = self.input(1)
-        a_val = '' if a is None or a.payload is None else a.payload
-        b_val = '' if b is None or b.payload is None else b.payload
-        self.set_output_val(0, Data(str(a_val) + str(b_val)))
+        x_data = self.input(0)
+        x = 0.0 if x_data is None or x_data.payload is None else float(x_data.payload)
+        self.set_output_val(0, Data(self.k * x))
 
 ### USER NODES END ###
 
@@ -54,7 +59,7 @@ class NodeGeneratorNode(Node):
     def __init__(self, params):
         super().__init__(params)
 
-    def append_user_code(self, user_input_code: str):
+    def append_user_code(self, user_input_code: str, user_gui_code: str = ''):
         import os, ast
 
         # Checks if the user input code is valid else returns nothing
@@ -70,7 +75,7 @@ class NodeGeneratorNode(Node):
         # Gets the file path of the current file
         file_path = os.path.abspath(__file__)
 
-        # Gets the marker of the auto export marker to insert the user code at the correct position
+        # Gets the marker to insert the user code at the correct position
         marker = '### USER NODES END ###'
 
         # Reads the content of the current file and stores it in file_contents
@@ -92,6 +97,30 @@ class NodeGeneratorNode(Node):
             # Writes the user code to the file
             with open(file_path, 'a', encoding='utf-8') as f:
                 f.write(user_node_code)
+
+        # Optionally write GUI code
+        if user_gui_code and user_gui_code.strip():
+            try:
+                ast.parse(user_gui_code)
+            except Exception as e:
+                print(f'Invalid GUI code: {e}')
+                return
+            gui_path = os.path.join(os.path.dirname(file_path), 'gui.py')
+            gui_marker = '### USER GUIS END ###'
+            try:
+                with open(gui_path, 'r', encoding='utf-8') as gf:
+                    gui_contents = gf.read()
+            except FileNotFoundError:
+                gui_contents = ''
+            gui_insert = user_gui_code + ('' if user_gui_code.endswith('\n') else '\n') + '\n'
+            if gui_marker in gui_contents:
+                idx = gui_contents.find(gui_marker)
+                new_gui = gui_contents[:idx] + gui_insert + gui_contents[idx:]
+                with open(gui_path, 'w', encoding='utf-8') as gf:
+                    gf.write(new_gui)
+            else:
+                with open(gui_path, 'a', encoding='utf-8') as gf:
+                    gf.write(gui_insert)
 
 # auto-discover Node subclasses (so appended classes are exported too)
 _node_types = []
