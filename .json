@@ -1,0 +1,289 @@
+{
+    "general info": {
+        "type": "Ryven project file",
+        "ryven version": "3.5.0"
+    },
+    "required packages": [
+        {
+            "name": "user_nodes",
+            "dir": "C:\\Users\\sebsa\\Desktop\\VIPP2\\ryven-editor\\ryven\\user_nodes"
+        }
+    ],
+    "GID": 2,
+    "version": "0.5.0",
+    "flows": {
+        "hello world": {
+            "GID": 5,
+            "algorithm mode": "data",
+            "nodes": [
+                {
+                    "GID": 6,
+                    "identifier": "user_nodes.ConcatNode",
+                    "version": null,
+                    "state data": "gAR9lC4=",
+                    "additional data": {},
+                    "inputs": [
+                        {
+                            "GID": 7,
+                            "type": "data",
+                            "label": "",
+                            "has widget": false
+                        },
+                        {
+                            "GID": 8,
+                            "type": "data",
+                            "label": "",
+                            "has widget": false
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 9,
+                            "type": "data",
+                            "label": ""
+                        }
+                    ],
+                    "pos x": 848.8104566700725,
+                    "pos y": 446.88910059250776,
+                    "unconnected ports hidden": false,
+                    "collapsed": false,
+                    "actions": {
+                        "update shape": {
+                            "method": "update_shape"
+                        },
+                        "hide unconnected ports": {
+                            "method": "hide_unconnected_ports"
+                        },
+                        "change title": {
+                            "method": "change_title"
+                        },
+                        "console ref": {
+                            "method": "console_ref_monkeypatch"
+                        }
+                    },
+                    "display title": "Concat",
+                    "inspector widget": {}
+                },
+                {
+                    "GID": 10,
+                    "identifier": "user_nodes.TextInputNode",
+                    "version": null,
+                    "state data": "gAR9lC4=",
+                    "additional data": {},
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "GID": 11,
+                            "type": "data",
+                            "label": ""
+                        }
+                    ],
+                    "pos x": 525.2047801718156,
+                    "pos y": 334.43623466550264,
+                    "main widget data": "gASVFAAAAAAAAAB9lIwEdGV4dJSMBkhlbGxvIJRzLg==",
+                    "unconnected ports hidden": false,
+                    "collapsed": false,
+                    "actions": {
+                        "update shape": {
+                            "method": "update_shape"
+                        },
+                        "hide unconnected ports": {
+                            "method": "hide_unconnected_ports"
+                        },
+                        "change title": {
+                            "method": "change_title"
+                        },
+                        "console ref": {
+                            "method": "console_ref_monkeypatch"
+                        }
+                    },
+                    "display title": "textInput",
+                    "inspector widget": {}
+                },
+                {
+                    "GID": 19,
+                    "identifier": "user_nodes.TextInputNode",
+                    "version": null,
+                    "state data": "gAR9lC4=",
+                    "additional data": {},
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "GID": 20,
+                            "type": "data",
+                            "label": ""
+                        }
+                    ],
+                    "pos x": 496.25843574034275,
+                    "pos y": 531.7823584722978,
+                    "main widget data": "gASVFgAAAAAAAAB9lIwEdGV4dJSMCFdvcmxkISEhlHMu",
+                    "unconnected ports hidden": false,
+                    "collapsed": false,
+                    "actions": {
+                        "update shape": {
+                            "method": "update_shape"
+                        },
+                        "hide unconnected ports": {
+                            "method": "hide_unconnected_ports"
+                        },
+                        "change title": {
+                            "method": "change_title"
+                        },
+                        "console ref": {
+                            "method": "console_ref_monkeypatch"
+                        }
+                    },
+                    "display title": "textInput",
+                    "inspector widget": {}
+                },
+                {
+                    "GID": 33,
+                    "version": "v0.2",
+                    "identifier": "built_in.GetVar_Node",
+                    "state data": "gAR9lC4=",
+                    "additional data": {},
+                    "inputs": [
+                        {
+                            "GID": 34,
+                            "type": "data",
+                            "label": "",
+                            "default": {
+                                "GID": 51,
+                                "identifier": "Data",
+                                "serialized": "gASVEgAAAAAAAACMDkhlbGxvIFdvcmxkISEhlC4="
+                            },
+                            "has widget": true,
+                            "widget name": "varname",
+                            "widget pos": "besides",
+                            "widget data": "gASVeAAAAAAAAAB9lIwDdmFslIwOcnl2ZW5jb3JlLkRhdGGUjAREYXRhlJOUKYGUfZQojAlnbG9iYWxfaWSUSzSMDnByZXZfZ2xvYmFsX2lklE6MDHByZXZfdmVyc2lvbpROjAhfcGF5bG9hZJSMDkhlbGxvIFdvcmxkISEhlHVicy4="
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "GID": 35,
+                            "type": "data",
+                            "label": "val"
+                        }
+                    ],
+                    "pos x": 1103.3945697046665,
+                    "pos y": 466.1169255435323,
+                    "unconnected ports hidden": false,
+                    "collapsed": false,
+                    "actions": {
+                        "update shape": {
+                            "method": "update_shape"
+                        },
+                        "hide unconnected ports": {
+                            "method": "hide_unconnected_ports"
+                        },
+                        "change title": {
+                            "method": "change_title"
+                        },
+                        "console ref": {
+                            "method": "console_ref_monkeypatch"
+                        }
+                    },
+                    "display title": "get var",
+                    "inspector widget": {}
+                }
+            ],
+            "connections": [
+                {
+                    "parent node index": 0,
+                    "output port index": 0,
+                    "connected node": 3,
+                    "connected input port index": 0
+                },
+                {
+                    "parent node index": 1,
+                    "output port index": 0,
+                    "connected node": 0,
+                    "connected input port index": 0
+                },
+                {
+                    "parent node index": 2,
+                    "output port index": 0,
+                    "connected node": 0,
+                    "connected input port index": 1
+                }
+            ],
+            "output data": [
+                {
+                    "data": {
+                        "GID": 50,
+                        "identifier": "Data",
+                        "serialized": "gASVEgAAAAAAAACMDkhlbGxvIFdvcmxkISEhlC4="
+                    },
+                    "dependent node outputs": [
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 49,
+                        "identifier": "Data",
+                        "serialized": "gASVCgAAAAAAAACMBkhlbGxvIJQu"
+                    },
+                    "dependent node outputs": [
+                        1,
+                        0
+                    ]
+                },
+                {
+                    "data": {
+                        "GID": 30,
+                        "identifier": "Data",
+                        "serialized": "gASVDAAAAAAAAACMCFdvcmxkISEhlC4="
+                    },
+                    "dependent node outputs": [
+                        2,
+                        0
+                    ]
+                }
+            ],
+            "flow view": {
+                "drawings": [],
+                "view size": [
+                    10000.0,
+                    7000.0
+                ]
+            }
+        }
+    },
+    "addons": {
+        "Logging": {
+            "GID": 3,
+            "version": "0.0.1",
+            "custom state": {}
+        },
+        "Variables": {
+            "GID": 4,
+            "version": "0.4",
+            "custom state": {
+                "5": {}
+            }
+        }
+    },
+    "geometry": "01d9d0cb00030000fffffffffffffff80000078000000410000000d200000078000006ad000003970000000002000000078000000000000000170000077f0000040f",
+    "state": "000000ff00000000fd000000020000000000000124000002c5fc0200000001fc00000020000002c5000001490100001efa000000010200000002fb000000140066006c006f00770073005f0064006f0063006b0100000000ffffffff0000007e00fffffffb00000014006e006f006400650073005f0064006f0063006b0100000000ffffffff0000012a00ffffff000000030000078000000100fc0100000001fb000000160063006f006e0073006f006c00650044006f0063006b0100000000000007800000005c00ffffff00000648000002c500000004000000040000000800000008fc00000000",
+    "flow_uis": {
+        "5": {
+            "geometry": "01d9d0cb000300000000000000000000000006310000028f0000000000000000000006310000028f000000000000000007800000000000000000000006310000028f",
+            "state": "000000ff00000000fd0000000100000001000000c100000290fc0200000001fc0000000000000290000000d00000005afa000000000200000006fb0000001c0069006e00730070006500630074006f0072005f0064006f0063006b0100000000ffffffff000000b100fffffffb000000220075006e0064006f005f0068006900730074006f00720079005f0064006f0063006b0100000000ffffffff0000005500fffffffb0000001a00730065007400740069006e00670073005f0064006f0063006b0100000000ffffffff0000003b0000003bfb0000001c007600610072006900610062006c00650073005f0064006f0063006b0100000000ffffffff0000007e00fffffffb00000016006c006f0067006700650072005f0064006f0063006b0100000000ffffffff0000004700fffffffb000000160073006f0075007200630065005f0064006f0063006b0100000000ffffffff0000008f00ffffff0000055d0000029000000004000000040000000800000008fc00000000",
+            "view": {
+                "m11": 0.9289514631872354,
+                "m12": 0.0,
+                "m13": 0.0,
+                "m21": 0.0,
+                "m22": 0.9289514631872354,
+                "m23": 0.0,
+                "m31": 0.0,
+                "m32": 0.0,
+                "m33": 1.0,
+                "v_scroll": 167,
+                "h_scroll": 91
+            }
+        }
+    }
+}

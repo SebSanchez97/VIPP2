@@ -186,17 +186,7 @@ class StartupDialog(QDialog):
         info_text_edit = QTextEdit()
         info_text_edit.setHtml(f'''
             <div style="font-family: Corbel; font-size: large;">
-                <img style="float:right;" height=120 src="{abs_path_from_package_dir('resources/pics/Ryven_icon_blurred.png')}"
-                >Ryven is not a stable piece of software, it's experimental, and nothing is
-                guaranteed to work as expected. Make sure to save frequently, and to
-                different files. If you spot an issue, please report it on the 
-                <a href="https://github.com/leon-thomm/ryven/issues">GitHub page</a>.
-                <br><br>
-                Ryven doesn't come with batteries (nodes) included. It provides some
-                small examples but nothing more. Development of large node packages
-                is not part of the Ryven editor project itself.
-                See the GitHub for a quickstart guide.
-                Cheers.
+                Welcome to VIPP!
             </div>
         ''')
         info_text_edit.setReadOnly(True)

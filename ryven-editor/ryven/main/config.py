@@ -31,7 +31,7 @@ class Config:
     verbose: bool = False
     nodes: Union[Set[pathlib.Path], Set[NodesPackage]] = set()
     example: Optional[str] = None
-    window_theme: Union[str, WindowTheme] = 'dark'
+    window_theme: Union[str, WindowTheme] = 'plain'
     flow_theme: Optional[str] = None  # None means it depends on window_theme
     performance_mode: str = 'pretty'
     animations: bool = True
