@@ -2,29 +2,6 @@ from ryven.node_env import *
 import inspect
 
 ### USER NODES BEGIN ###
-
-class MultiplyTextNode(Node):
-    title = 'Multiply (Text)'
-    tags = ['math']
-    init_inputs = [NodeInputType()]
-    init_outputs = [NodeOutputType()]
-
-    def __init__(self, params):
-        super().__init__(params)
-        self.factor = 1.0
-
-    def set_factor(self, text: str):
-        try:
-            self.factor = float(text)
-        except Exception:
-            pass
-        self.update()
-
-    def update_event(self, inp=-1):
-        x_data = self.input(0)
-        x = 0.0 if x_data is None or x_data.payload is None else float(x_data.payload)
-        self.set_output_val(0, Data(self.factor * x))
-
 ### USER NODES END ###
 
 class NodeGeneratorNode(Node):

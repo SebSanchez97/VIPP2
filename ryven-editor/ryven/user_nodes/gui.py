@@ -61,28 +61,4 @@ class NodeGeneratorNodeGui(NodeGUI):
     color = '#a3be8c'
 
 ### USER GUIS BEGIN ###
-
-class MultiplyText_MainWidget(NodeMainWidget, QLineEdit):
-    def __init__(self, params):
-        NodeMainWidget.__init__(self, params)
-        QLineEdit.__init__(self)
-        self.setPlaceholderText('Factor (e.g., 2.5)')
-        self.setText('1.0')
-        self.textChanged.connect(self.on_text)
-
-    def on_text(self, text: str):
-        self.node.set_factor(text)
-
-    def get_state(self) -> dict:
-        return {'text': self.text()}
-
-    def set_state(self, state: dict):
-        self.setText(state.get('text', '1.0'))
-
-@node_gui(nodes.MultiplyTextNode)
-class MultiplyTextNodeGui(NodeGUI):
-    main_widget_class = MultiplyText_MainWidget
-    main_widget_pos = 'between ports'
-    color = '#a3be8c'
-
 ### USER GUIS END ###
