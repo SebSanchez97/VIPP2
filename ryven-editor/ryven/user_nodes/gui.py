@@ -3,58 +3,6 @@ from qtpy.QtCore import Qt
 from ryven.gui_env import *
 from . import nodes
 
-class RandSliderWidget(NodeInputWidget, QSlider):
-    def __init__(self, params):
-        NodeInputWidget.__init__(self, params)
-        QSlider.__init__(self)
-
-        self.setOrientation(Qt.Horizontal)
-        self.setMinimumWidth(100)
-        self.setMinimum(0)
-        self.setMaximum(100)
-        self.setValue(50)
-        self.valueChanged.connect(self.value_changed)
-    
-    def value_changed(self, val):
-        # triggers update of the node input this widget is attached to
-        self.update_node_input(Data(val))
-    
-    def get_state(self) -> dict:
-        return {'value': self.value()}
-    
-    def set_state(self, state: dict):
-        self.setValue(state['value'])
-
-@node_gui(nodes.RandNode)
-class RandNodeGui(NodeGUI):
-    color = '#fcba03'
-    input_widget_classes = { 'slider': RandSliderWidget }
-    init_input_widgets = { 0: {'name': 'slider', 'pos': 'below'} }
-
-
-class TextInput_MainWidget(NodeMainWidget, QLineEdit):
-    def __init__(self, params):
-        NodeMainWidget.__init__(self, params)
-        QLineEdit.__init__(self)
-
-        self.setPlaceholderText('Type here...')
-        self.textChanged.connect(self.text_changed)
-
-    def text_changed(self, text: str):
-        self.node.set_text(text)
-
-    def get_state(self) -> dict:
-        return {'text': self.text()}
-
-    def set_state(self, state: dict):
-        self.setText(state.get('text', ''))
-
-@node_gui(nodes.TextInputNode)
-class TextInputNodeGui(NodeGUI):
-    main_widget_class = TextInput_MainWidget
-    main_widget_pos = 'between ports'
-    color = '#88c0d0'
-
 class NodeGenerator_MainWidget(NodeMainWidget, QWidget):
     def __init__(self, params):
         NodeMainWidget.__init__(self, params)
@@ -113,5 +61,28 @@ class NodeGeneratorNodeGui(NodeGUI):
     color = '#a3be8c'
 
 ### USER GUIS BEGIN ###
+
+class MultiplyText_MainWidget(NodeMainWidget, QLineEdit):
+    def __init__(self, params):
+        NodeMainWidget.__init__(self, params)
+        QLineEdit.__init__(self)
+        self.setPlaceholderText('Factor (e.g., 2.5)')
+        self.setText('1.0')
+        self.textChanged.connect(self.on_text)
+
+    def on_text(self, text: str):
+        self.node.set_factor(text)
+
+    def get_state(self) -> dict:
+        return {'text': self.text()}
+
+    def set_state(self, state: dict):
+        self.setText(state.get('text', '1.0'))
+
+@node_gui(nodes.MultiplyTextNode)
+class MultiplyTextNodeGui(NodeGUI):
+    main_widget_class = MultiplyText_MainWidget
+    main_widget_pos = 'between ports'
+    color = '#a3be8c'
 
 ### USER GUIS END ###
