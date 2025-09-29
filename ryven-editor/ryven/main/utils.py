@@ -17,7 +17,11 @@ def in_gui_mode() -> bool:
     return environ['RYVEN_MODE'] == 'gui'
 
 
-def load_from_file(file: str, components_list: Optional[List[str]] = None) -> Optional[Tuple]:
+def load_from_file(
+    file: str,
+    components_list: Optional[List[str]] = None,
+    force: bool = False,
+) -> Optional[Tuple]:
     """
     Imports specified components from a python module with given file path.
     The directory of the file is added to sys.path if not already present.
@@ -31,7 +35,7 @@ def load_from_file(file: str, components_list: Optional[List[str]] = None) -> Op
     name = f"{pkg_name}.{mod_name}"  # e.g. built_in.nodes
 
     # protection from re-loading for no reason
-    if name in sys.modules:
+    if name in sys.modules and not force:
         return None
     
     if parent_dirpath not in sys.path:
@@ -39,7 +43,12 @@ def load_from_file(file: str, components_list: Optional[List[str]] = None) -> Op
     
     # import the corresponding module
     try:
-        mod = importlib.import_module(name, pkg_name)
+        importlib.invalidate_caches()
+
+        if force and name in sys.modules:
+            mod = importlib.reload(sys.modules[name])
+        else:
+            mod = importlib.import_module(name, pkg_name)
         comps = tuple([getattr(mod, c) for c in components_list])
         return comps
     except ModuleNotFoundError as e:
