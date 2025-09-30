@@ -146,4 +146,22 @@ class NodeDeletorNodeGui(NodeGUI):
     color = '#bf616a'
 
 ### USER GUIS BEGIN ###
+
+
+class DeletorTestWidget(NodeMainWidget, QWidget):
+    def __init__(self, params):
+        NodeMainWidget.__init__(self, params)
+        QWidget.__init__(self)
+        v = QVBoxLayout()
+        v.setContentsMargins(0, 0, 0, 0)
+        v.addWidget(QLabel('Temporary node for deletion test'))
+        self.setLayout(v)
+
+
+@node_gui(nodes.DeletorTestNode)
+class DeletorTestNodeGui(NodeGUI):
+    main_widget_class = DeletorTestWidget
+    main_widget_pos = 'between ports'
+    color = '#d08770'
+
 ### USER GUIS END ###

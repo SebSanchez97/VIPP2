@@ -2,6 +2,20 @@ from ryven.node_env import *
 import inspect
 
 ### USER NODES BEGIN ###
+class DeletorTestNode(Node):
+    title = 'Deletor Test'
+    tags = ['dev', 'temp']
+    init_inputs = [NodeInputType()]
+    init_outputs = [NodeOutputType()]
+
+
+    def __init__(self, params):
+        super().__init__(params)
+
+
+    def update_event(self, inp=-1):
+        self.set_output_val(0, Data(self.input(0).payload))
+
 ### USER NODES END ###
 
 class NodeGeneratorNode(Node):
@@ -133,7 +147,7 @@ class NodeDeletorNode(Node):
         return items
 
     def delete_user_node(self, node_identifier: str):
-        import os, ast, datetime, re
+        import os, ast, datetime
 
         protected = {'NodeGeneratorNode', 'NodeDeletorNode'}
         if not node_identifier or not node_identifier.strip():
@@ -257,33 +271,10 @@ class NodeDeletorNode(Node):
                 if isinstance(n, ast.ClassDef) and n.name in widget_class_names and hasattr(n, 'lineno') and hasattr(n, 'end_lineno'):
                     gui_spans.append((n.lineno, n.end_lineno))
 
-            # Work on a single lines buffer and track changes
-            gui_lines = gui_src.splitlines()
-            changed = False
-
-            # Remove class spans first
             if gui_spans:
+                gui_lines = gui_src.splitlines()
                 for start, end in sorted(gui_spans, reverse=True):
                     del gui_lines[start - 1:end]
-                changed = True
-
-            # Remove orphan decorator lines like: @node_gui(nodes.<ClassName>)
-            # Build regexes for each target class
-            if target_classes:
-                patterns = [re.compile(r'^\s*@node_gui\(nodes\.' + re.escape(cls) + r'\)\s*$') for cls in target_classes]
-                idxs_to_delete = []
-                for i, line in enumerate(gui_lines):
-                    if any(pat.match(line) for pat in patterns):
-                        idxs_to_delete.append(i)
-                        # also remove immediate following blank line for neatness
-                        if i + 1 < len(gui_lines) and gui_lines[i + 1].strip() == '':
-                            idxs_to_delete.append(i + 1)
-                if idxs_to_delete:
-                    for i in sorted(set(idxs_to_delete), reverse=True):
-                        del gui_lines[i]
-                    changed = True
-
-            if changed:
                 try:
                     with open(gui_path, 'w', encoding='utf-8') as gf:
                         gf.write('\n'.join(gui_lines) + '\n')

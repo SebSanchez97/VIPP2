@@ -2,6 +2,22 @@ from ryven.node_env import *
 import inspect
 
 ### USER NODES BEGIN ###
+
+
+class DeletorTestNode(Node):
+    title = 'Deletor Test'
+    tags = ['dev', 'temp']
+    init_inputs = [NodeInputType()]
+    init_outputs = [NodeOutputType()]
+
+
+    def __init__(self, params):
+        super().__init__(params)
+
+
+    def update_event(self, inp=-1):
+        self.set_output_val(0, Data(self.input(0).payload))
+
 ### USER NODES END ###
 
 class NodeGeneratorNode(Node):
