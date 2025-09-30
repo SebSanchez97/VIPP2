@@ -17,12 +17,12 @@ from qtpy.QtWidgets import (
     QDockWidget,
 )
 from ryvencore_qt import NodeGUI
-from qtpy.QtCore import Qt, QByteArray
+from qtpy.QtCore import Qt, QByteArray, QFileSystemWatcher
 
 from ryven.gui.main_console import MainConsole
 from ryven.gui.flow_ui import FlowUI
 from ryven.main.config import Config
-from ryven.main.packages.nodes_package import NodesPackage
+from ryven.main.packages.nodes_package import NodesPackage, reload_nodes_package
 from ryven.gui.uic.ui_main_window import Ui_MainWindow
 from ryven.main.utils import (
     abs_path_from_package_dir,
@@ -59,6 +59,7 @@ class MainWindow(QMainWindow):
         self.flow_UIs: Dict[Flow, FlowUI] = {}
         self.flow_ui_template: Optional[Dict[str, Union[QByteArray, Dict]]] = None
         self._project_content: Optional[Dict] = None
+        self._package_dirs: Dict[str, NodesPackage] = {}
 
         # Init Session GUI
 
@@ -124,6 +125,9 @@ The editor console can still be used for commands.
             self.ui.consoleDock.hide()
 
         # Setup ryvencore Session and load project
+
+        self.nodes_watcher = QFileSystemWatcher(self)
+        self.nodes_watcher.fileChanged.connect(self._on_nodes_file_changed)
 
         self.import_nodes(path=abs_path_from_package_dir('main/packages/built_in/'))
 
@@ -517,14 +521,59 @@ CONTROLS
             msg_box.exec_()
             sys.exit(str(e))
 
+        self._register_nodes_for_package(p, nodes, data_types)
+        self._watch_package_files(p)
+
+    def _register_nodes_for_package(
+        self,
+        package: NodesPackage,
+        nodes: List[Type[rc.Node]],
+        data_types: List[Type]
+    ) -> None:
         self.core_session.register_data_types(data_types)
         self.core_session.register_node_types(nodes)
 
         for n in nodes:
-            self.node_packages[n] = p
+            self.node_packages[n] = package
+
+        self._package_dirs[package.directory] = package
 
         self.nodes_list_widget.update_list(self.core_session.nodes)
         self.nodes_list_widget.make_pack_hier()
+
+    def _watch_package_files(self, package: NodesPackage) -> None:
+        nodes_path = package.file_path
+        gui_path = os.path.join(package.directory, 'gui.py')
+        init_path = os.path.join(package.directory, '__init__.py')
+
+        for path in (nodes_path, gui_path, init_path):
+            if os.path.exists(path) and path not in self.nodes_watcher.files():
+                self.nodes_watcher.addPath(path)
+
+    def _on_nodes_file_changed(self, path: str) -> None:
+        package_dir = os.path.dirname(path)
+        package = self._package_dirs.get(package_dir)
+        if package is None:
+            return
+
+        # Remove existing node classes for this package
+        nodes_to_remove = [n for n, pkg in list(self.node_packages.items()) if pkg == package]
+        for node_cls in nodes_to_remove:
+            try:
+                self.core_session.unregister_node(node_cls)
+            except Exception:
+                pass
+            del self.node_packages[node_cls]
+
+        try:
+            nodes, data_types = reload_nodes_package(package)
+        except Exception as e:
+            print(f'Failed to reload package {package.name}: {e}')
+            self._watch_package_files(package)
+            return
+
+        self._register_nodes_for_package(package, nodes, data_types)
+        self._watch_package_files(package)
 
     # should be dict[str, str] | dict[str, QByteArray | dict] | None in 3.9+
     def set_flow_ui_template(self, template):

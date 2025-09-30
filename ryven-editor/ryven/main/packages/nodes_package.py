@@ -3,6 +3,7 @@ This module, together with the node_env and gui_env defines Ryven's nodes
 package system. It can be used outside of Ryven as well.
 """
 
+import importlib
 import importlib.util
 import os, sys
 import pathlib
@@ -13,9 +14,9 @@ import pkgutil
 from ryvencore import Node, Data
 
 from ryven.main.utils import (
-    read_project, 
-    ryven_dir_path, 
-    abs_path_from_package_dir, 
+    read_project,
+    ryven_dir_path,
+    abs_path_from_package_dir,
     in_gui_mode,
     load_from_file,
 )
@@ -96,7 +97,39 @@ def import_nodes_package(
         from ryven.gui.code_editor.codes_storage import register_node_type
         for node_type in node_types:
             register_node_type(node_type)
-    
+
+    return node_types, data_types
+
+
+def reload_nodes_package(package: NodesPackage) -> Tuple[List[Type[Node]], List[Type[Data]]]:
+    """Reload an already imported nodes package and return fresh node and data types."""
+
+    from ryven import node_env
+
+    node_env.NodesEnvRegistry.current_package = package
+
+    # ensure Python sees updated files
+    importlib.invalidate_caches()
+
+    # purge cached modules for this package (nodes, gui, submodules)
+    package_prefix = f"{package.name}."
+    for mod_name in list(sys.modules.keys()):
+        if mod_name == package.name or mod_name.startswith(package_prefix):
+            del sys.modules[mod_name]
+
+    load_from_file(package.file_path, force=True)
+
+    if in_gui_mode():
+        load_current_guis()
+
+    node_types, data_types = node_env.NodesEnvRegistry.consume_last_exported_package()
+
+    if in_gui_mode():
+        from ryven.gui.code_editor.codes_storage import register_node_type
+
+        for node_type in node_types:
+            register_node_type(node_type)
+
     return node_types, data_types
 
 def process_nodes_packages(
