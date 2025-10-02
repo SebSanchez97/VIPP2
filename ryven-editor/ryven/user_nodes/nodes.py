@@ -149,24 +149,24 @@ class NodeDeletorNode(Node):
         gui_path = os.path.join(pkg_dir, 'gui.py')
 
         # Backup
-        try:
-            backups_dir = os.path.join(pkg_dir, '.backups')
-            os.makedirs(backups_dir, exist_ok=True)
-            ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-            with open(nodes_path, 'r', encoding='utf-8') as f:
-                nodes_src = f.read()
-            with open(os.path.join(backups_dir, f'nodes.py.{ts}'), 'w', encoding='utf-8') as bf:
-                bf.write(nodes_src)
-            try:
-                with open(gui_path, 'r', encoding='utf-8') as gf:
-                    gui_src = gf.read()
-                with open(os.path.join(backups_dir, f'gui.py.{ts}'), 'w', encoding='utf-8') as gbf:
-                    gbf.write(gui_src)
-            except FileNotFoundError:
-                gui_src = ''
-        except Exception as e:
-            print(f'Backup failed: {e}')
-            return
+        # try:
+        #     backups_dir = os.path.join(pkg_dir, '.backups')
+        #     os.makedirs(backups_dir, exist_ok=True)
+        #     ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        #     with open(nodes_path, 'r', encoding='utf-8') as f:
+        #         nodes_src = f.read()
+        #     with open(os.path.join(backups_dir, f'nodes.py.{ts}'), 'w', encoding='utf-8') as bf:
+        #         bf.write(nodes_src)
+        #     try:
+        #         with open(gui_path, 'r', encoding='utf-8') as gf:
+        #             gui_src = gf.read()
+        #         with open(os.path.join(backups_dir, f'gui.py.{ts}'), 'w', encoding='utf-8') as gbf:
+        #             gbf.write(gui_src)
+        #     except FileNotFoundError:
+        #         gui_src = ''
+        # except Exception as e:
+        #     print(f'Backup failed: {e}')
+        #     return
 
         # Parse nodes.py and find class by class name or title
         try:
