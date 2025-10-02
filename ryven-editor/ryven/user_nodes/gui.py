@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QSlider, QLineEdit, QTextEdit, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox, QSizePolicy
+from qtpy.QtWidgets import QSlider, QLineEdit, QTextEdit, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox, QSizePolicy, QComboBox, QMessageBox
 from qtpy.QtCore import Qt
 from ryven.gui_env import *
 from . import nodes
@@ -59,6 +59,91 @@ class NodeGeneratorNodeGui(NodeGUI):
     main_widget_class = NodeGenerator_MainWidget
     main_widget_pos = 'between ports'
     color = '#a3be8c'
+
+class NodeDeletor_MainWidget(NodeMainWidget, QWidget):
+    def __init__(self, params):
+        NodeMainWidget.__init__(self, params)
+        QWidget.__init__(self)
+
+        self.combo = QComboBox(self)
+        self.combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        self.refresh_btn = QPushButton('Refresh', self)
+        self.refresh_btn.clicked.connect(self.populate_nodes)
+
+        self.delete_btn = QPushButton('Delete Node', self)
+        self.delete_btn.clicked.connect(self.on_delete)
+
+        top_h = QHBoxLayout()
+        top_h.setContentsMargins(0, 0, 0, 0)
+        top_h.addWidget(QLabel('Select node to delete:', self))
+        top_h.addStretch(1)
+
+        controls_h = QHBoxLayout()
+        controls_h.setContentsMargins(0, 0, 0, 0)
+        controls_h.addWidget(self.combo, 1)
+        controls_h.addWidget(self.refresh_btn, 0)
+        controls_h.addWidget(self.delete_btn, 0)
+
+        v = QVBoxLayout()
+        v.setContentsMargins(0, 0, 0, 0)
+        v.addLayout(top_h)
+        v.addLayout(controls_h)
+        self.setLayout(v)
+
+        self.populate_nodes()
+
+    def populate_nodes(self):
+        try:
+            items = self.node.list_user_nodes()
+        except Exception as e:
+            print(e)
+            items = []
+
+        current = self.combo.currentData() if self.combo.count() > 0 else None
+        self.combo.clear()
+        for it in items:
+            cls_name = it.get('class')
+            title = it.get('title') or ''
+            label = f"{title} — {cls_name}" if title else cls_name
+            self.combo.addItem(label, cls_name)
+
+        # Restore selection if possible
+        if current is not None:
+            idx = self.combo.findData(current)
+            if idx >= 0:
+                self.combo.setCurrentIndex(idx)
+
+    def on_delete(self):
+        if self.combo.count() == 0:
+            return
+        cls_name = self.combo.currentData()
+        label = self.combo.currentText()
+
+        # confirm
+        msg = QMessageBox(
+            QMessageBox.Warning,
+            'Delete node?',
+            f'You are about to delete:\n{label}\n\nThis will remove its code from user_nodes. Continue?',
+            QMessageBox.Cancel | QMessageBox.Yes,
+            self,
+        )
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() != QMessageBox.Yes:
+            return
+
+        try:
+            # use class name for exact match
+            self.node.delete_user_node(cls_name)
+        except Exception as e:
+            print(e)
+        self.populate_nodes()
+
+@node_gui(nodes.NodeDeletorNode)
+class NodeDeletorNodeGui(NodeGUI):
+    main_widget_class = NodeDeletor_MainWidget
+    main_widget_pos = 'between ports'
+    color = '#bf616a'
 
 ### USER GUIS BEGIN ###
 ### USER GUIS END ###
