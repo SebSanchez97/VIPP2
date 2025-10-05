@@ -2,6 +2,7 @@ from ryven.node_env import *
 import inspect
 
 ### USER NODES BEGIN ###
+
 ### USER NODES END ###
 
 # auto-discover Node subclasses (so appended classes are exported too)

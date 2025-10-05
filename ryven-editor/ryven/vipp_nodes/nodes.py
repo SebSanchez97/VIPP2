@@ -1,6 +1,7 @@
 from ryven.node_env import *
 import inspect
 import os
+from .code_injection import insert_user_node_code, insert_user_gui_code
 
 BACKUP_ON_DELETE = False
 
@@ -23,69 +24,18 @@ class NodeGeneratorNode(Node):
         super().__init__(params)
 
     def append_user_code(self, user_input_code: str, user_gui_code: str = ''):
-        import ast
-
-        # Checks if the user input code is valid else returns
-        if not user_input_code or not user_input_code.strip():
+        # Insert validated user node code
+        err = insert_user_node_code(__file__, user_input_code)
+        if err:
+            print(err)
             return
-        try:
-            ast.parse(user_input_code)
-        except Exception as e:
-            print(f'Invalid user code: {e}')
-            return
-
-        # Paths into user_nodes package
-        nodes_path, gui_path, _ = _user_nodes_paths()
-
-        # Gets the marker to insert the user code at the correct position
-        marker = '### USER NODES END ###'
-
-        # Read nodes.py
-        try:
-            with open(nodes_path, 'r', encoding='utf-8') as f:
-                file_contents = f.read()
-        except FileNotFoundError:
-            file_contents = ''
-
-        # Creates the insert block of the user code
-        user_node_code = user_input_code + ('' if user_input_code.endswith('\n') else '\n') + '\n'
-
-        # Insert before marker when present, otherwise append
-        if marker in file_contents:
-            idx = file_contents.find(marker)
-            new_content = file_contents[:idx] + user_node_code + file_contents[idx:]
-            with open(nodes_path, 'w', encoding='utf-8') as f:
-                f.write(new_content)
-        else:
-            with open(nodes_path, 'a', encoding='utf-8') as f:
-                f.write(user_node_code)
 
         # Optional GUI code handling
         if user_gui_code and user_gui_code.strip():
-            try:
-                ast.parse(user_gui_code)
-            except Exception as e:
-                print(f'Invalid GUI code: {e}')
+            err = insert_user_gui_code(__file__, user_gui_code)
+            if err:
+                print(err)
                 return
-
-            gui_marker = '### USER GUIS END ###'
-
-            # Read gui.py
-            try:
-                with open(gui_path, 'r', encoding='utf-8') as gf:
-                    gui_contents = gf.read()
-            except FileNotFoundError:
-                gui_contents = ''
-
-            gui_insert = user_gui_code + ('' if user_gui_code.endswith('\n') else '\n') + '\n'
-            if gui_marker in gui_contents:
-                idx = gui_contents.find(gui_marker)
-                new_gui = gui_contents[:idx] + gui_insert + gui_contents[idx:]
-                with open(gui_path, 'w', encoding='utf-8') as gf:
-                    gf.write(new_gui)
-            else:
-                with open(gui_path, 'a', encoding='utf-8') as gf:
-                    gf.write(gui_insert)
 
 
 class NodeDeletorNode(Node):
