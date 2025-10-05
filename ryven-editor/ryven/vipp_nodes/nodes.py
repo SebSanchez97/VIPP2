@@ -246,6 +246,15 @@ class NodeDeletorNode(Node):
                     print(f'Failed to write gui.py: {e}')
                     return
 
+class PromptGeneratorNode(Node):
+    title = 'Prompt Generator'
+    tags = ['dev', 'generator', 'ai']
+    init_outputs = []
+
+    def __init__(self, params):
+        super().__init__(params)
+
+    # No processing logic yet – this node is GUI-driven for now
 
 # Export nodes from this module for completeness
 _node_types = []

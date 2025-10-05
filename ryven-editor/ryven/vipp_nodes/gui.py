@@ -149,4 +149,85 @@ class NodeDeletorNodeGui(NodeGUI):
     main_widget_pos = 'between ports'
     color = '#bf616a'
 
+class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
+    def __init__(self, params):
+        NodeMainWidget.__init__(self, params)
+        QWidget.__init__(self)
 
+        # Top: node name textbox
+        self.name_edit = QLineEdit(self)
+        self.name_edit.setPlaceholderText('Name your node')
+        self.name_edit.textChanged.connect(self.on_name_changed)
+
+        # Left: prompt editor + Generate button
+        self.prompt_edit = QTextEdit(self)
+        self.prompt_edit.setPlaceholderText('Write your prompt here...')
+        self.prompt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.generate_btn = QPushButton('Generate', self)
+
+        left_v = QVBoxLayout()
+        left_v.setContentsMargins(6, 6, 6, 6)
+        left_v.addWidget(self.prompt_edit, 1)
+        left_v.addWidget(self.generate_btn, 0)
+
+        left_group = QGroupBox('Prompt', self)
+        left_group.setLayout(left_v)
+
+        # Center: logic code + Create button
+        self.logic_edit = QTextEdit(self)
+        self.logic_edit.setPlaceholderText('Generated logic code (nodes.py)')
+        self.logic_edit.setReadOnly(True)
+        self.logic_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.create_logic_btn = QPushButton('Create', self)
+
+        center_v = QVBoxLayout()
+        center_v.setContentsMargins(6, 6, 6, 6)
+        center_v.addWidget(self.logic_edit, 1)
+        center_v.addWidget(self.create_logic_btn, 0)
+
+        center_group = QGroupBox('Logic (nodes.py)', self)
+        center_group.setLayout(center_v)
+
+        # Right: GUI code + Create button
+        self.gui_edit = QTextEdit(self)
+        self.gui_edit.setPlaceholderText('Generated GUI code (gui.py)')
+        self.gui_edit.setReadOnly(True)
+        self.gui_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.create_gui_btn = QPushButton('Create', self)
+
+        right_v = QVBoxLayout()
+        right_v.setContentsMargins(6, 6, 6, 6)
+        right_v.addWidget(self.gui_edit, 1)
+        right_v.addWidget(self.create_gui_btn, 0)
+
+        right_group = QGroupBox('GUI (gui.py)', self)
+        right_group.setLayout(right_v)
+
+        # Row with three panels
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(left_group, 1)
+        row.addWidget(center_group, 1)
+        row.addWidget(right_group, 1)
+
+        # Root layout
+        root = QVBoxLayout()
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(self.name_edit)
+        root.addLayout(row)
+        self.setLayout(root)
+
+    def on_name_changed(self, text: str):
+        # Update node title display live (non-persistent)
+        try:
+            self.node.title = text or 'Prompt Generator'
+            self.update_node()
+        except Exception:
+            pass
+
+
+@node_gui(nodes.PromptGeneratorNode)
+class PromptGeneratorGui(NodeGUI):
+    main_widget_class = PromptGenerator_MainWidget
+    main_widget_pos = 'between ports'
+    color = '#6a9bd8'
