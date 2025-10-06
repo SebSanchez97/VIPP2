@@ -55,13 +55,11 @@ class NodeGenerator_MainWidget(NodeMainWidget, QWidget):
         except Exception as e:
             print(e)
 
-
 @node_gui(nodes.NodeGeneratorNode)
 class NodeGeneratorNodeGui(NodeGUI):
     main_widget_class = NodeGenerator_MainWidget
     main_widget_pos = 'between ports'
     color = '#a3be8c'
-
 
 class NodeDeletor_MainWidget(NodeMainWidget, QWidget):
     def __init__(self, params):
@@ -141,7 +139,6 @@ class NodeDeletor_MainWidget(NodeMainWidget, QWidget):
         except Exception as e:
             print(e)
         self.populate_nodes()
-
 
 @node_gui(nodes.NodeDeletorNode)
 class NodeDeletorNodeGui(NodeGUI):
@@ -224,7 +221,6 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
             self.update_node()
         except Exception:
             pass
-
 
 @node_gui(nodes.PromptGeneratorNode)
 class PromptGeneratorGui(NodeGUI):

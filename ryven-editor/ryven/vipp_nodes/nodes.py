@@ -5,7 +5,6 @@ from .code_injection import insert_user_node_code, insert_user_gui_code
 
 BACKUP_ON_DELETE = False
 
-
 def _user_nodes_paths():
     # Resolve sibling package paths for user_nodes
     ryven_dir = os.path.dirname(os.path.dirname(__file__))
@@ -13,7 +12,6 @@ def _user_nodes_paths():
     nodes_path = os.path.join(user_pkg_dir, 'nodes.py')
     gui_path = os.path.join(user_pkg_dir, 'gui.py')
     return nodes_path, gui_path, user_pkg_dir
-
 
 class NodeGeneratorNode(Node):
     title = 'Node Generator'
@@ -36,7 +34,6 @@ class NodeGeneratorNode(Node):
             if err:
                 print(err)
                 return
-
 
 class NodeDeletorNode(Node):
     title = 'Node Deletor'
@@ -254,8 +251,6 @@ class PromptGeneratorNode(Node):
     def __init__(self, params):
         super().__init__(params)
 
-    # No processing logic yet – this node is GUI-driven for now
-
 # Export nodes from this module for completeness
 _node_types = []
 for _name, _obj in list(globals().items()):
@@ -267,9 +262,6 @@ for _name, _obj in list(globals().items()):
 
 export_nodes(_node_types)
 
-
 @on_gui_load
 def load_gui():
     from . import gui
-
-

@@ -1,0 +1,101 @@
+You generate Ryven nodes. Output EXACTLY two Python snippets, in this order:
+1) nodes.py logic class
+2) gui.py GUI for that class
+Do NOT include explanations or markdown fences.
+
+General constraints:
+- The logic snippet must define exactly one class that subclasses Node.
+- The GUI snippet must define a matching GUI for the same class using @node_gui.
+- Keep code self-contained with only these imports:
+  - nodes.py: from ryven.node_env import *
+  - gui.py: from ryven.gui_env import * and from . import nodes
+  - Plus qtpy widgets/types where needed in GUI (e.g., QLineEdit, QTextEdit, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QSizePolicy, QLabel).
+- No file/network I/O, subprocesses, threads, or global side effects.
+- No top-level execution. No while True loops. No eval/exec.
+- Keep code concise and readable.
+
+Required structure for nodes.py:
+- Import: from ryven.node_env import *
+- Define class {{CLASS_NAME}}(Node):
+  - title: human-friendly name derived from {{NODE_NAME}}
+  - tags: include "ai" and "generator" when relevant
+  - Optionally init_inputs / init_outputs lists (simple strings)
+  - __init__(self, params): super().__init__(params)
+  - No heavy logic required; keep minimal and safe
+
+Required structure for gui.py:
+- Imports:
+  - from qtpy.QtWidgets import QLineEdit, QTextEdit, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QSizePolicy, QLabel
+  - from qtpy.QtCore import Qt
+  - from ryven.gui_env import *
+  - from . import nodes
+- Provide a NodeMainWidget subclass with:
+  - A top QLineEdit to name the node
+  - Three side-by-side QTextEdit panes: left (prompt, editable), center (logic code preview, read-only), right (GUI code preview, read-only)
+  - A “Generate” QPushButton under the left pane
+  - A “Create” QPushButton under both center and right panes (shared or separate is acceptable)
+  - Reasonable layouts (QVBoxLayout/QHBoxLayout) and placeholders
+- Provide a NodeGUI subclass decorated with @node_gui(nodes.{{CLASS_NAME}}) that sets main_widget_class and main_widget_pos='between ports'
+
+Output format:
+- First snippet: nodes.py content only.
+- Then a single blank line.
+- Second snippet: gui.py content only.
+
+Example (concise):
+
+[nodes.py]
+from ryven.node_env import *
+
+class ExampleAdderNode(Node):
+    title = 'Example Adder'
+    tags = ['example', 'generator']
+    init_outputs = ['sum']
+
+    def __init__(self, params):
+        super().__init__(params)
+        # Minimal illustrative logic container; not executed here
+
+[gui.py]
+from qtpy.QtWidgets import QLineEdit, QTextEdit, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QSizePolicy, QLabel
+from qtpy.QtCore import Qt
+from ryven.gui_env import *
+from . import nodes
+
+class ExampleAdder_MainWidget(NodeMainWidget, QWidget):
+    def __init__(self, params):
+        NodeMainWidget.__init__(self, params)
+        QWidget.__init__(self)
+        self.name_edit = QLineEdit(self)
+        self.name_edit.setPlaceholderText('Name your node')
+        self.prompt_edit = QTextEdit(self)
+        self.prompt_edit.setPlaceholderText('Write your prompt here...')
+        self.prompt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.logic_edit = QTextEdit(self)
+        self.logic_edit.setReadOnly(True)
+        self.gui_edit = QTextEdit(self)
+        self.gui_edit.setReadOnly(True)
+        self.generate_btn = QPushButton('Generate', self)
+        self.create_btn = QPushButton('Create', self)
+        left_v = QVBoxLayout(); left_v.addWidget(self.prompt_edit); left_v.addWidget(self.generate_btn)
+        center_v = QVBoxLayout(); center_v.addWidget(self.logic_edit); center_v.addWidget(self.create_btn)
+        right_v = QVBoxLayout(); right_v.addWidget(self.gui_edit); right_v.addWidget(self.create_btn)
+        left_group = QGroupBox('Prompt', self); left_group.setLayout(left_v)
+        center_group = QGroupBox('Logic (nodes.py)', self); center_group.setLayout(center_v)
+        right_group = QGroupBox('GUI (gui.py)', self); right_group.setLayout(right_v)
+        row = QHBoxLayout(); row.addWidget(left_group); row.addWidget(center_group); row.addWidget(right_group)
+        root = QVBoxLayout(); root.addWidget(self.name_edit); root.addLayout(row); self.setLayout(root)
+
+@node_gui(nodes.ExampleAdderNode)
+class ExampleAdderNodeGui(NodeGUI):
+    main_widget_class = ExampleAdder_MainWidget
+    main_widget_pos = 'between ports'
+
+Variables:
+- {{NODE_NAME}}: preferred human name for the node (from user)
+- {{CLASS_NAME}}: class-safe name based on the node name (e.g., PromptWeatherNode)
+
+User input:
+NODE_NAME: {{NODE_NAME}}
+PROMPT:
+{{USER_PROMPT}}
