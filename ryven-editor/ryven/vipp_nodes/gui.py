@@ -1,7 +1,13 @@
 from qtpy.QtWidgets import QSlider, QLineEdit, QTextEdit, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox, QSizePolicy, QComboBox, QMessageBox
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QThread, Signal
 from ryven.gui_env import *
 from . import nodes
+from .openai_worker import OpenAIWorker
+import os
+import json
+import re
+import urllib.request
+import urllib.error
 
 
 class NodeGenerator_MainWidget(NodeMainWidget, QWidget):
@@ -225,8 +231,6 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
 
     def on_generate(self):
         try:
-            # Resolve template path adjacent to this module
-            import os
             base_dir = os.path.dirname(os.path.abspath(__file__))
             template_path = os.path.join(base_dir, 'promt_template.txt')
 
@@ -249,12 +253,86 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
                 .replace('{{USER_PROMPT}}', user_prompt)
             )
 
-            # Print to console for inspection
+            # Print composed prompt for verification
             print('\n=== Composed LLM Prompt Start ===\n')
             print(filled)
             print('\n=== Composed LLM Prompt End ===\n')
+
+            api_key = self._get_openai_api_key()
+            if not api_key:
+                print('Missing OPENAI_API_KEY (environment or .env).')
+                return
+
+            # Launch background worker to call OpenAI API
+            self.generate_btn.setEnabled(False)
+            self.generate_btn.setText('Generating...')
+            self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o-mini', temperature=0.2)
+            self._worker.finished.connect(self.on_llm_finished)
+            self._worker.errored.connect(self.on_llm_error)
+            self._worker.start()
         except Exception as e:
             print(e)
+
+    def on_llm_finished(self, content: str):
+        # Parse returned content into logic and gui code if possible
+        logic, gui = self._parse_generated(content)
+        self.logic_edit.setPlainText(logic.strip())
+        self.gui_edit.setPlainText(gui.strip())
+        self.generate_btn.setEnabled(True)
+        self.generate_btn.setText('Generate')
+
+    def on_llm_error(self, err: str):
+        print(f'OpenAI error: {err}')
+        self.generate_btn.setEnabled(True)
+        self.generate_btn.setText('Generate')
+
+    def _parse_generated(self, text: str) -> tuple[str, str]:
+        # Prefer template example tags if present
+        try:
+            nodes_match = re.search(r'^\[nodes\.py\]\s*$([\s\S]*?)(?=^\[gui\.py\]\s*$)', text, re.MULTILINE)
+            gui_match = re.search(r'^\[gui\.py\]\s*$([\s\S]*)\Z', text, re.MULTILINE)
+            if nodes_match and gui_match:
+                return nodes_match.group(1).strip(), gui_match.group(1).strip()
+        except Exception:
+            pass
+
+        # Fallback: naive split if a strong separator pattern exists
+        parts = re.split(r'\n{3,}', text)
+        if len(parts) >= 2:
+            return parts[0], '\n\n'.join(parts[1:])
+        return text, ''
+
+    def _get_openai_api_key(self) -> str:
+        key = os.environ.get('OPENAI_API_KEY')
+        if key:
+            return key
+        # Fallback: try to read from a .env file upwards from this directory
+        try:
+            dir_path = os.path.dirname(os.path.abspath(__file__))
+            for _ in range(6):
+                env_path = os.path.join(dir_path, '.env')
+                if os.path.isfile(env_path):
+                    try:
+                        with open(env_path, 'r', encoding='utf-8') as f:
+                            for line in f:
+                                line = line.strip()
+                                if not line or line.startswith('#'):
+                                    continue
+                                if '=' in line:
+                                    k, v = line.split('=', 1)
+                                    k = k.strip()
+                                    v = v.strip().strip('"\'')
+                                    if k == 'OPENAI_API_KEY' and v:
+                                        return v
+                    except Exception:
+                        pass
+                parent = os.path.dirname(dir_path)
+                if parent == dir_path:
+                    break
+                dir_path = parent
+        except Exception:
+            pass
+        return ''
 
 @node_gui(nodes.PromptGeneratorNode)
 class PromptGeneratorGui(NodeGUI):
