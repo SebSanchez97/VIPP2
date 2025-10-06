@@ -3,6 +3,7 @@ from qtpy.QtCore import Qt, QThread, Signal
 from ryven.gui_env import *
 from . import nodes
 from .openai_worker import OpenAIWorker
+from .code_injection import insert_user_node_code, insert_user_gui_code
 import os
 import json
 import re
@@ -183,6 +184,7 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         self.logic_edit.setReadOnly(True)
         self.logic_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.create_logic_btn = QPushButton('Create', self)
+        self.create_logic_btn.clicked.connect(self.on_create_logic)
 
         center_v = QVBoxLayout()
         center_v.setContentsMargins(6, 6, 6, 6)
@@ -198,6 +200,7 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         self.gui_edit.setReadOnly(True)
         self.gui_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.create_gui_btn = QPushButton('Create', self)
+        self.create_gui_btn.clicked.connect(self.on_create_gui)
 
         right_v = QVBoxLayout()
         right_v.setContentsMargins(6, 6, 6, 6)
@@ -274,6 +277,13 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
             print(e)
 
     def on_llm_finished(self, content: str):
+        # Log raw LLM output for inspection
+        try:
+            print('\n=== LLM Raw Output Start ===\n')
+            print(content)
+            print('\n=== LLM Raw Output End ===\n')
+        except Exception:
+            pass
         # Parse returned content into logic and gui code if possible
         logic, gui = self._parse_generated(content)
         self.logic_edit.setPlainText(logic.strip())
@@ -295,6 +305,39 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
                 return nodes_match.group(1).strip(), gui_match.group(1).strip()
         except Exception:
             pass
+
+        # Heuristic split:
+        # - Identify class definitions and GUI-oriented imports/decorators
+        lines = text.splitlines(True)
+        class_idxs = [i for i, ln in enumerate(lines) if re.match(r'^\s*class\s+\w+', ln)]
+        gui_imp_idx = None
+        for i, ln in enumerate(lines):
+            if re.match(r'^\s*from\s+ryven\.gui_env\s+import\s+\*', ln):
+                gui_imp_idx = i
+                break
+            if re.match(r'^\s*from\s+qtpy\.', ln):
+                gui_imp_idx = i
+                break
+            if re.match(r'^\s*from\s+\.\s+import\s+nodes', ln):
+                gui_imp_idx = i
+                break
+            if re.match(r'^\s*@node_gui\(', ln):
+                gui_imp_idx = i
+                break
+
+        if class_idxs:
+            if len(class_idxs) >= 2:
+                # If we have a GUI import before the second class, prefer to split there
+                if gui_imp_idx is not None and gui_imp_idx > class_idxs[0] and gui_imp_idx < class_idxs[1]:
+                    split_at = gui_imp_idx
+                else:
+                    split_at = class_idxs[1]
+                return ''.join(lines[:split_at]).strip(), ''.join(lines[split_at:]).strip()
+            else:
+                # Single class but GUI imports found later
+                if gui_imp_idx is not None and gui_imp_idx > class_idxs[0]:
+                    split_at = gui_imp_idx
+                    return ''.join(lines[:split_at]).strip(), ''.join(lines[split_at:]).strip()
 
         # Fallback: naive split if a strong separator pattern exists
         parts = re.split(r'\n{3,}', text)
@@ -333,6 +376,34 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         except Exception:
             pass
         return ''
+
+    def on_create_logic(self):
+        try:
+            code = self.logic_edit.toPlainText()
+            if not code.strip():
+                print('No logic code to create.')
+                return
+            err = insert_user_node_code(__file__, code)
+            if err:
+                print(err)
+                return
+            print('Logic code inserted into user_nodes/nodes.py')
+        except Exception as e:
+            print(e)
+
+    def on_create_gui(self):
+        try:
+            code = self.gui_edit.toPlainText()
+            if not code.strip():
+                print('No GUI code to create.')
+                return
+            err = insert_user_gui_code(__file__, code)
+            if err:
+                print(err)
+                return
+            print('GUI code inserted into user_nodes/gui.py')
+        except Exception as e:
+            print(e)
 
 @node_gui(nodes.PromptGeneratorNode)
 class PromptGeneratorGui(NodeGUI):
