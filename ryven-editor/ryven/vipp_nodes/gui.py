@@ -161,6 +161,7 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         self.prompt_edit.setPlaceholderText('Write your prompt here...')
         self.prompt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.generate_btn = QPushButton('Generate', self)
+        self.generate_btn.clicked.connect(self.on_generate)
 
         left_v = QVBoxLayout()
         left_v.setContentsMargins(6, 6, 6, 6)
@@ -221,6 +222,39 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
             self.update_node()
         except Exception:
             pass
+
+    def on_generate(self):
+        try:
+            # Resolve template path adjacent to this module
+            import os
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            template_path = os.path.join(base_dir, 'promt_template.txt')
+
+            # Read template
+            try:
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    template = f.read()
+            except Exception as e:
+                print(f'Failed to read template: {e}')
+                return
+
+            node_name = (self.name_edit.text() or 'Prompt Generator').strip()
+            user_prompt = self.prompt_edit.toPlainText().strip()
+
+            # Fill placeholders
+            filled = (
+                template
+                .replace('{{NODE_NAME}}', node_name)
+                .replace('{{CLASS_NAME}}', ''.join(ch for ch in node_name.title() if ch.isalnum()) + 'Node')
+                .replace('{{USER_PROMPT}}', user_prompt)
+            )
+
+            # Print to console for inspection
+            print('\n=== Composed LLM Prompt Start ===\n')
+            print(filled)
+            print('\n=== Composed LLM Prompt End ===\n')
+        except Exception as e:
+            print(e)
 
 @node_gui(nodes.PromptGeneratorNode)
 class PromptGeneratorGui(NodeGUI):
