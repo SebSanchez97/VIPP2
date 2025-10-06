@@ -3,13 +3,13 @@ You generate Ryven nodes. Output EXACTLY two Python snippets with these headers 
 [gui.py]
 Do NOT include explanations or markdown fences. Only valid Python under each header.
 
-General constraints:
-- The logic snippet must define exactly one class that subclasses Node.
-- The GUI snippet must define a matching GUI for the same class using @node_gui.
-- Keep code self-contained with only these imports:
-  - nodes.py: from ryven.node_env import *
-  - gui.py: from ryven.gui_env import * and from . import nodes
-  - gui.py may import qtpy widgets/types as needed (e.g., QLabel, QWidget, QVBoxLayout).
+ General constraints:
+ - The logic snippet must define exactly one class that subclasses ImageNodeBase.
+ - The GUI snippet must define a matching GUI for the same class using @node_gui and inherit ImageNodeGuiBase for its main widget.
+ - Keep code self-contained with only these imports:
+  - nodes.py: from ryven.node_env import * and from ryven.base_nodes.image_logic import ImageNodeBase
+  - gui.py: from ryven.gui_env import * and from . import nodes and from ryven.base_nodes.image_gui import ImageNodeGuiBase
+   - gui.py may import qtpy widgets/types as needed (e.g., QLabel, QWidget, QVBoxLayout).
 - Do not import qtpy or GUI modules in nodes.py.
 - No file/network I/O, subprocesses, threads, or global side effects.
 - No top-level execution. No while True loops. No eval/exec.
@@ -21,24 +21,47 @@ Documentation reference:
   - Public docs: `https://github.com/leon-thomm/Ryven` (README/wiki)
   - Follow: separate logic (nodes.py) from GUI (gui.py); define ports via NodeInputType/NodeOutputType; set outputs using Data in update_event.
 
-Required structure for nodes.py:
-- Import: from ryven.node_env import *
-- Define class {{CLASS_NAME}}(Node):
-  - title: human-friendly name derived from {{NODE_NAME}}
-  - tags: lightweight list, e.g., ['generated'] (you may add relevant tags)
-  - Define ports using NodeInputType / NodeOutputType (minimal and valid)
-  - __init__(self, params): super().__init__(params)
-  - If there is at least one output, implement update_event(self, inp=-1) and set an output value via set_output_val(index, Data(value))
-  - No calls to export_nodes or GUI-related code
+ Approved imports (only use these unless explicitly requested otherwise):
+ - nodes.py:
+   - from ryven.node_env import *
+   - from ryven.base_nodes.image_logic import ImageNodeBase
+   - Standard library only when necessary: typing, math, json, re, os
+   - Do NOT import Qt/qtpy or any GUI modules here
+ - gui.py:
+   - from ryven.gui_env import *
+   - from . import nodes
+   - from ryven.base_nodes.image_gui import ImageNodeGuiBase
+   - from qtpy.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QTextEdit, QPushButton, QGroupBox, QSizePolicy, QComboBox, QSlider
+   - from qtpy.QtCore import Qt (and Signal if needed)
+   - from qtpy.QtGui import QPixmap, QImage (only if you must display images)
 
-Required structure for gui.py:
-- Imports:
-  - from ryven.gui_env import *
-  - from . import nodes
-  - from qtpy.QtWidgets import ... for basic widgets (keep minimal)
-  - from qtpy.QtCore import Qt (if needed)
-- Provide a NodeMainWidget subclass named {{CLASS_NAME}}_MainWidget that builds a minimal, safe UI (e.g., a QLabel or simple controls). Do NOT implement a prompt-generator UI here.
-- Provide a NodeGUI subclass decorated with @node_gui(nodes.{{CLASS_NAME}}) that sets main_widget_class = {{CLASS_NAME}}_MainWidget and main_widget_pos = 'between ports'.
+Disallowed imports (do not use unless explicitly permitted by the prompt):
+- Heavy or unavailable: numpy, pandas, cv2 (OpenCV), PIL/Pillow, requests, httpx, aiohttp, torch, torchvision, tensorflow, skimage, matplotlib, scipy, pydantic, fastapi, flask, django, sqlalchemy, any network or filesystem libraries beyond minimal path handling.
+- Any non-standard or external packages not listed above.
+
+ Required structure for nodes.py:
+ - Imports:
+   - from ryven.node_env import *
+   - from ryven.vipp_nodes.nodes import ImageNodeBase
+ - Define class {{CLASS_NAME}}(ImageNodeBase):
+   - title: human-friendly name derived from {{NODE_NAME}}
+   - tags: include 'generated' and domain tags if relevant
+   - Define ports using NodeInputType / NodeOutputType if you need additional ports (ImageNodeBase already provides a default image output)
+   - __init__(self, params): super().__init__(params)
+   - Implement update_event(self, inp=-1) using ImageNodeBase helpers:
+     - Read input via payload = self.input_image_payload(0)
+     - Produce output via self.set_output_image_payload(new_payload, 0)
+   - Do NOT import GUI or call export_nodes here
+
+ Required structure for gui.py:
+ - Imports:
+   - from ryven.gui_env import *
+   - from . import nodes
+   - from ryven.vipp_nodes.gui import ImageNodeGuiBase
+   - from qtpy.QtWidgets import ... for basic widgets (keep minimal)
+   - from qtpy.QtCore import Qt (if needed)
+ - Provide a {{CLASS_NAME}}_MainWidget subclass that inherits ImageNodeGuiBase. You may add simple controls (labels, sliders) above the preview; the preview area is already handled by ImageNodeGuiBase.
+ - Provide a NodeGUI subclass decorated with @node_gui(nodes.{{CLASS_NAME}}) that sets main_widget_class = {{CLASS_NAME}}_MainWidget and main_widget_pos = 'between ports'.
 
 Output format (required):
 [nodes.py]
@@ -47,113 +70,123 @@ Output format (required):
 [gui.py]
 <GUI for that class only>
 
-Minimal working example:
+Minimal working example (pass-through image):
 
 [nodes.py]
 from ryven.node_env import *
+from ryven.vipp_nodes.nodes import ImageNodeBase
 
-class ExampleEchoNode(Node):
-    title = 'Example Echo'
-    tags = ['example']
-    init_inputs = [NodeInputType('in')]
-    init_outputs = [NodeOutputType('out')]
+class ExamplePassThroughImageNode(ImageNodeBase):
+    title = 'Example Image Pass-Through'
+    tags = ['example', 'generated', 'image']
+    # one image input, one image output
+    init_inputs = [NodeInputType('image')]
+    init_outputs = [NodeOutputType('image')]
 
     def __init__(self, params):
         super().__init__(params)
-    
+
     def update_event(self, inp=-1):
-        # forward input 0 to output 0
-        val = self.input(0)
-        # ensure Data wrapper
-        if isinstance(val, Data):
-            self.set_output_val(0, val)
-        else:
-            self.set_output_val(0, Data(val))
+        payload = self.input_image_payload(0)
+        if payload is not None:
+            self.set_output_image_payload(payload, 0)
 
 [gui.py]
 from qtpy.QtWidgets import QLabel, QWidget, QVBoxLayout
 from qtpy.QtCore import Qt
 from ryven.gui_env import *
 from . import nodes
+from ryven.vipp_nodes.gui import ImageNodeGuiBase
 
-class ExampleEchoNode_MainWidget(NodeMainWidget, QWidget):
+class ExamplePassThroughImageNode_MainWidget(ImageNodeGuiBase):
     def __init__(self, params):
-        NodeMainWidget.__init__(self, params)
-        QWidget.__init__(self)
-        self.label = QLabel('Example Echo', self)
-        layout = QVBoxLayout()
-        layout.addWidget(self.label)
-        self.setLayout(layout)
+        ImageNodeGuiBase.__init__(self, params)
+        # Optional label above preview
+        self.layout().insertWidget(0, QLabel('Pass-through image', self))
 
-@node_gui(nodes.ExampleEchoNode)
-class ExampleEchoNodeGui(NodeGUI):
-    main_widget_class = ExampleEchoNode_MainWidget
+@node_gui(nodes.ExamplePassThroughImageNode)
+class ExamplePassThroughImageNodeGui(NodeGUI):
+    main_widget_class = ExamplePassThroughImageNode_MainWidget
     main_widget_pos = 'between ports'
 
-More detailed example with inputs/outputs and an input widget:
+More detailed example with a numeric parameter and slider:
 
 [nodes.py]
 from ryven.node_env import *
+from ryven.vipp_nodes.nodes import ImageNodeBase
 
-class ExampleAdderNode(Node):
-    title = 'Example Adder'
-    tags = ['example']
-    # two numeric inputs and one numeric output
-    init_inputs = [NodeInputType('a'), NodeInputType('b')]
-    init_outputs = [NodeOutputType('sum')]
+class ExampleBrightnessNode(ImageNodeBase):
+    title = 'Example Brightness'
+    tags = ['example', 'generated', 'image']
+    init_inputs = [NodeInputType('image')]
+    init_outputs = [NodeOutputType('image')]
 
     def __init__(self, params):
         super().__init__(params)
+        # This minimal example demonstrates param-driven processing without heavy libs.
+        # Real pixel math should be delegated to approved helpers or upstream nodes.
+        self._delta = 0  # placeholder scalar
+
+    def set_delta(self, val: int):
+        try:
+            self._delta = int(val)
+            self.update()
+        except Exception:
+            pass
 
     def update_event(self, inp=-1):
-        a = self.input(0)
-        b = self.input(1)
-        # extract numeric values from Data if needed
-        a_val = a.payload if isinstance(a, Data) else a
-        b_val = b.payload if isinstance(b, Data) else b
-        try:
-            result = (a_val or 0) + (b_val or 0)
-        except Exception:
-            result = 0
-        self.set_output_val(0, Data(result))
+        payload = self.input_image_payload(0)
+        if payload is None:
+            return
+        # For demonstration, just forward; real adjustments should happen in approved helpers
+        self.set_output_image_payload(payload, 0)
 
 [gui.py]
 from qtpy.QtWidgets import QSlider
 from qtpy.QtCore import Qt
 from ryven.gui_env import *
 from . import nodes
+from ryven.vipp_nodes.gui import ImageNodeGuiBase
 
-class BSlider(NodeInputWidget, QSlider):
+class BrightnessSlider(NodeInputWidget, QSlider):
     def __init__(self, params):
         NodeInputWidget.__init__(self, params)
         QSlider.__init__(self)
         self.setOrientation(Qt.Horizontal)
-        self.setMinimum(0)
-        self.setMaximum(100)
+        self.setMinimum(-50)
+        self.setMaximum(50)
         self.setValue(0)
         self.valueChanged.connect(self._on_change)
 
     def _on_change(self, v):
-        # update input value when not connected
-        self.update_node_input(Data(v))
+        # Call node method directly; node can debounce if needed
+        try:
+            self.node.set_delta(v)
+        except Exception:
+            pass
 
-@node_gui(nodes.ExampleAdderNode)
-class ExampleAdderNodeGui(NodeGUI):
+class ExampleBrightnessNode_MainWidget(ImageNodeGuiBase):
+    def __init__(self, params):
+        ImageNodeGuiBase.__init__(self, params)
+
+@node_gui(nodes.ExampleBrightnessNode)
+class ExampleBrightnessNodeGui(NodeGUI):
     color = '#5d95de'
-    # attach a slider widget to input index 1 ("b") below the port
+    main_widget_class = ExampleBrightnessNode_MainWidget
+    main_widget_pos = 'between ports'
     input_widget_classes = {
-        'b_slider': BSlider,
+        'brightness': BrightnessSlider,
     }
     init_input_widgets = {
-        1: {'name': 'b_slider', 'pos': 'below'},
+        # no data input widgets; slider is a parameter control bound to the node
     }
 
 Validity checklist you must follow:
-- Exactly one class in [nodes.py], named {{CLASS_NAME}}, subclassing Node.
-- No qtpy/GUI imports in [nodes.py].
-- In [gui.py], reference the node via @node_gui(nodes.{{CLASS_NAME}}).
+- Exactly one class in [nodes.py], named {{CLASS_NAME}}, subclassing ImageNodeBase.
+- Import ImageNodeBase from ryven.vipp_nodes.nodes; do not import qtpy in nodes.py.
+- In [gui.py], reference the node via @node_gui(nodes.{{CLASS_NAME}}) and inherit ImageNodeGuiBase for the main widget.
 - GUI compiles with minimal imports, no top-level side effects.
-- Ports created via NodeInputType/NodeOutputType; if outputs exist, implement update_event and set outputs using Data.
+- Ports created via NodeInputType/NodeOutputType; use ImageNodeBase helpers (input_image_payload, set_output_image_payload).
 
 Variables:
 - {{NODE_NAME}}: preferred human name for the node (from user)

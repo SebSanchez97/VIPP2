@@ -269,7 +269,7 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
             # Launch background worker to call OpenAI API
             self.generate_btn.setEnabled(False)
             self.generate_btn.setText('Generating...')
-            self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o-mini', temperature=0.2)
+            self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o', temperature=0.2)
             self._worker.finished.connect(self.on_llm_finished)
             self._worker.errored.connect(self.on_llm_error)
             self._worker.start()

@@ -1,11 +1,8 @@
 from __future__ import annotations
-
 import json
 import urllib.request
 import urllib.error
-
 from qtpy.QtCore import QThread, Signal
-
 
 class OpenAIWorker(QThread):
     finished = Signal(str)
@@ -50,5 +47,3 @@ class OpenAIWorker(QThread):
             self.errored.emit(f'HTTPError {e.code}: {detail}')
         except Exception as e:
             self.errored.emit(str(e))
-
-
