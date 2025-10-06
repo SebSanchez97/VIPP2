@@ -15,6 +15,12 @@ General constraints:
 - No top-level execution. No while True loops. No eval/exec.
 - Keep code concise and readable.
 
+Documentation reference:
+- Prefer the APIs and patterns from Ryven's docs. When in doubt, follow the examples in the local README and wiki:
+  - Local README in this project (search for Node examples)
+  - Public docs: `https://github.com/leon-thomm/Ryven` (README/wiki)
+  - Follow: separate logic (nodes.py) from GUI (gui.py); define ports via NodeInputType/NodeOutputType; set outputs using Data in update_event.
+
 Required structure for nodes.py:
 - Import: from ryven.node_env import *
 - Define class {{CLASS_NAME}}(Node):
@@ -58,7 +64,11 @@ class ExampleEchoNode(Node):
     def update_event(self, inp=-1):
         # forward input 0 to output 0
         val = self.input(0)
-        self.set_output_val(0, Data(val))
+        # ensure Data wrapper
+        if isinstance(val, Data):
+            self.set_output_val(0, val)
+        else:
+            self.set_output_val(0, Data(val))
 
 [gui.py]
 from qtpy.QtWidgets import QLabel, QWidget, QVBoxLayout
@@ -79,6 +89,71 @@ class ExampleEchoNode_MainWidget(NodeMainWidget, QWidget):
 class ExampleEchoNodeGui(NodeGUI):
     main_widget_class = ExampleEchoNode_MainWidget
     main_widget_pos = 'between ports'
+
+More detailed example with inputs/outputs and an input widget:
+
+[nodes.py]
+from ryven.node_env import *
+
+class ExampleAdderNode(Node):
+    title = 'Example Adder'
+    tags = ['example']
+    # two numeric inputs and one numeric output
+    init_inputs = [NodeInputType('a'), NodeInputType('b')]
+    init_outputs = [NodeOutputType('sum')]
+
+    def __init__(self, params):
+        super().__init__(params)
+
+    def update_event(self, inp=-1):
+        a = self.input(0)
+        b = self.input(1)
+        # extract numeric values from Data if needed
+        a_val = a.payload if isinstance(a, Data) else a
+        b_val = b.payload if isinstance(b, Data) else b
+        try:
+            result = (a_val or 0) + (b_val or 0)
+        except Exception:
+            result = 0
+        self.set_output_val(0, Data(result))
+
+[gui.py]
+from qtpy.QtWidgets import QSlider
+from qtpy.QtCore import Qt
+from ryven.gui_env import *
+from . import nodes
+
+class BSlider(NodeInputWidget, QSlider):
+    def __init__(self, params):
+        NodeInputWidget.__init__(self, params)
+        QSlider.__init__(self)
+        self.setOrientation(Qt.Horizontal)
+        self.setMinimum(0)
+        self.setMaximum(100)
+        self.setValue(0)
+        self.valueChanged.connect(self._on_change)
+
+    def _on_change(self, v):
+        # update input value when not connected
+        self.update_node_input(Data(v))
+
+@node_gui(nodes.ExampleAdderNode)
+class ExampleAdderNodeGui(NodeGUI):
+    color = '#5d95de'
+    # attach a slider widget to input index 1 ("b") below the port
+    input_widget_classes = {
+        'b_slider': BSlider,
+    }
+    init_input_widgets = {
+        1: {'name': 'b_slider', 'pos': 'below'},
+    }
+
+Validity checklist you must follow:
+- Exactly one class in [nodes.py], named {{CLASS_NAME}}, subclassing Node.
+- No qtpy/GUI imports in [nodes.py].
+- In [gui.py], reference the node via @node_gui(nodes.{{CLASS_NAME}}).
+- GUI compiles with minimal imports, no top-level side effects.
+- Ports created via NodeInputType/NodeOutputType; if outputs exist, implement update_event and set outputs using Data.
 
 Variables:
 - {{NODE_NAME}}: preferred human name for the node (from user)
