@@ -8,7 +8,7 @@ class OpenAIWorker(QThread):
     finished = Signal(str)
     errored = Signal(str)
 
-    def __init__(self, prompt: str, api_key: str, model: str = 'gpt-4o-mini', temperature: float = 0.2):
+    def __init__(self, prompt: str, api_key: str, model: str = 'gpt-4o-mini', temperature: float = 0.0):
         super().__init__()
         self.prompt = prompt
         self.api_key = api_key
@@ -25,8 +25,14 @@ class OpenAIWorker(QThread):
             payload = {
                 'model': self.model,
                 'temperature': self.temperature,
+                'top_p': 1.0,
+                'max_tokens': 1800,
+                'response_format': {'type': 'json_object'},
                 'messages': [
-                    {'role': 'system', 'content': 'You are a precise code generator for Ryven nodes.'},
+                    {
+                        'role': 'system',
+                        'content': 'You are a precise Ryven node code generator. Output ONLY a valid JSON object matching the requested schema.'
+                    },
                     {'role': 'user', 'content': self.prompt},
                 ],
             }

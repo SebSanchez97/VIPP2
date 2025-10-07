@@ -1,138 +1,43 @@
-You are part of a system that is able to dynamically generate code to create Ryven nodes.
-Do NOT include explanations or markdown fences. Only valid Python under each header.
+You generate Ryven nodes for an image-processing system. Return ONLY valid JSON.
 
+Output schema (no extra keys, no prose, no markdown):
+{
+  "class_name": string,             // Python class name, e.g. {{CLASS_NAME}}
+  "nodes_py": string,               // Python code for nodes.py
+  "gui_py": string                  // Python code for gui.py
+}
 
-Ryven nodes consist of two parts: a class stored in nodes.py which defines the logic of a node and a class stored in gui.py which defines the frontend of the node.
+Rules:
+- Write concise, valid Python in both code strings; no comments or explanations.
+- nodes_py MUST:
+  - import exactly:
+    - from ryven.node_env import *
+  - define class {{CLASS_NAME}}(ImageNodeBase) with:
+    - title = '{{NODE_NAME}}'
+    - tags including 'generated'
+    - optional setters (e.g., set_factor) that call self.update()
+    - override: def process(self, img): return a PIL.Image.Image (RGBA)
+  - Do NOT implement custom preview wiring; ImageNodeBase handles preview and IO.
+- gui_py MUST:
+  - import exactly:
+    - from ryven.gui_env import *
+    - from . import nodes
+    - qtpy widgets/types as needed (e.g., QSlider, Qt)
+  - define class {{CLASS_NAME}}_MainWidget(ImageNodeGuiBase) and add UI controls in __init__ that call node setters and trigger update.
+  - decorate the GUI class (not the widget) with @node_gui(nodes.{{CLASS_NAME}}) and define NodeGUI using main_widget_class = {{CLASS_NAME}}_MainWidget.
+- Image contract: images are passed as Data(PIL.Image); always work in RGBA inside process().
+- No file/network I/O in generated code.
 
-I am going to give you the following as reference for generating the Ryven nodes:
-1. An example of what a typical Ryven node looks like (both front- and backend)
-2. The user prompt which defines what type of Ryven node the user wants.
+Example JSON (structure guidance; adapt names and details to the user request):
+{
+  "class_name": "BrightnessNode",
+  "nodes_py": "from ryven.node_env import *\n\nclass BrightnessNode(ImageNodeBase):\n    title = 'Brightness'\n    tags = ['image', 'generated']\n\n    def __init__(self, params):\n        super().__init__(params)\n        self._factor = 1.0\n\n    def set_factor(self, v: float):\n        self._factor = max(0.0, min(3.0, float(v)))\n        self.update()\n\n    def process(self, img):\n        from PIL import ImageEnhance\n        return ImageEnhance.Brightness(img).enhance(self._factor)\n",
+  "gui_py": "from ryven.gui_env import *\nfrom . import nodes\nfrom qtpy.QtWidgets import QSlider\nfrom qtpy.QtCore import Qt\n\nclass BrightnessNode_MainWidget(ImageNodeGuiBase):\n    def __init__(self, params):\n        ImageNodeGuiBase.__init__(self, params)\n        self.slider = QSlider(Qt.Horizontal, self)\n        self.slider.setRange(0, 300)\n        self.slider.setValue(100)\n        self.slider.valueChanged.connect(lambda v: self.node.set_factor(v/100.0))\n        self.layout().addWidget(self.slider, 0)\n\n@node_gui(nodes.BrightnessNode)\nclass BrightnessNodeGui(NodeGUI):\n    main_widget_class = BrightnessNode_MainWidget\n    main_widget_pos = 'between ports'\n    color = '#5fb36b'\n"
+}
 
-Below is example code of a node that allows the importing and display of an image:
-
-[nodes.py]
-class ImageLoaderNode(Node):
-    title = 'Image Loader'
-    tags = ['image', 'io', 'example']
-    init_inputs = []
-    init_outputs = [NodeOutputType('image')]
-
-    def __init__(self, params):
-        super().__init__(params)
-        self._path = ''
-
-    def set_path(self, path: str):
-        self._path = str(path or '')
-        self.update()
-
-    def path(self) -> str:
-        return self._path
-
-    def update_event(self, inp=-1):
-        if not self._path:
-            self.set_output_val(0, None)
-            return
-        # Downstream nodes can load/display from this path.
-        self.set_output_val(0, self._path)
-
-[gui.py]
-class ImageLoaderNode_MainWidget(NodeMainWidget, QWidget):
-    def __init__(self, params):
-        NodeMainWidget.__init__(self, params)
-        QWidget.__init__(self)
-
-        self.path_edit = QLineEdit(self)
-        self.path_edit.setPlaceholderText('Image file path...')
-
-        self.browse_btn = QPushButton('Browse...', self)
-        self.browse_btn.clicked.connect(self.on_browse)
-
-        self.path_edit.textChanged.connect(self.on_path_changed)
-
-        top = QHBoxLayout()
-        top.setContentsMargins(0, 0, 0, 0)
-        top.addWidget(self.path_edit, 1)
-        top.addWidget(self.browse_btn, 0)
-
-        self.preview = QLabel(self)
-        self.preview.setAlignment(Qt.AlignCenter)
-        self.preview.setMinimumHeight(160)
-        self.preview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.preview.setText('No image')
-
-        v = QVBoxLayout()
-        v.setContentsMargins(0, 0, 0, 0)
-        v.addLayout(top)
-        v.addWidget(self.preview, 1)
-        self.setLayout(v)
-
-        try:
-            self.path_edit.setText(self.node.path())
-            self._refresh_preview(self.node.path())
-        except Exception:
-            pass
-
-    def on_browse(self):
-        try:
-            from qtpy.QtWidgets import QFileDialog
-            path, _ = QFileDialog.getOpenFileName(
-                self,
-                'Select Image',
-                '',
-                'Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp);;All Files (*)'
-            )
-            if path:
-                self.path_edit.setText(path)
-        except Exception:
-            pass
-
-    def on_path_changed(self, text: str):
-        try:
-            self.node.set_path(text)
-        except Exception:
-            pass
-        self._refresh_preview(text)
-
-    def _refresh_preview(self, path: str):
-        try:
-            from qtpy.QtGui import QPixmap
-            if not path:
-                self.preview.setText('No image')
-                self.preview.setPixmap(QPixmap())
-                return
-            pix = QPixmap(path)
-            if pix.isNull():
-                self.preview.setText('Failed to load image')
-                self.preview.setPixmap(QPixmap())
-                return
-            scaled = pix.scaled(
-                self.preview.size(),
-                Qt.KeepAspectRatio,
-                transformMode=1  # Qt.SmoothTransformation
-            )
-            self.preview.setPixmap(scaled)
-            self.preview.setText('')
-        except Exception:
-            self.preview.setText('Error')
-
-    def resizeEvent(self, e):
-        super().resizeEvent(e)
-        self._refresh_preview(self.path_edit.text())
-
-@node_gui(nodes.ImageLoaderNode)
-class ImageLoaderNodeGui(NodeGUI):
-    main_widget_class = ImageLoaderNode_MainWidget
-    main_widget_pos = 'between ports'
-    color = '#d0aa4f'
-
-Variables:
-- {{NODE_NAME}}: preferred human name for the node (from user)
-- {{CLASS_NAME}}: class-safe name based on the node name
-
-User input:
-
-NODE_NAME:
-{{NODE_NAME}}
-
-PROMPT:
+User request (for the node’s behavior and UI):
 {{USER_PROMPT}}
+
+Identifiers:
+- NODE_NAME = {{NODE_NAME}}
+- CLASS_NAME = {{CLASS_NAME}}

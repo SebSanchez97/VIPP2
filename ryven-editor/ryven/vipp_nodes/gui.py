@@ -269,7 +269,7 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
             # Launch background worker to call OpenAI API
             self.generate_btn.setEnabled(False)
             self.generate_btn.setText('Generating...')
-            self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o', temperature=0.2)
+            self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o', temperature=0.0)
             self._worker.finished.connect(self.on_llm_finished)
             self._worker.errored.connect(self.on_llm_error)
             self._worker.start()
@@ -284,10 +284,18 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
             print('\n=== LLM Raw Output End ===\n')
         except Exception:
             pass
-        # Parse returned content into logic and gui code if possible
-        logic, gui = self._parse_generated(content)
-        self.logic_edit.setPlainText(logic.strip())
-        self.gui_edit.setPlainText(gui.strip())
+        # Parse JSON first (strict mode). Expect keys: class_name, nodes_py, gui_py
+        logic = ''
+        gui = ''
+        try:
+            obj = json.loads(content)
+            logic = (obj.get('nodes_py') or '').strip()
+            gui = (obj.get('gui_py') or '').strip()
+        except Exception:
+            # Fallback to legacy heuristic ONLY if JSON is not returned
+            logic, gui = self._parse_generated(content)
+        self.logic_edit.setPlainText(logic)
+        self.gui_edit.setPlainText(gui)
         self.generate_btn.setEnabled(True)
         self.generate_btn.setText('Generate')
 
@@ -297,7 +305,7 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         self.generate_btn.setText('Generate')
 
     def _parse_generated(self, text: str) -> tuple[str, str]:
-        # Prefer template example tags if present
+        # Legacy fallback splitter retained for non-JSON outputs during development
         try:
             nodes_match = re.search(r'^\[nodes\.py\]\s*$([\s\S]*?)(?=^\[gui\.py\]\s*$)', text, re.MULTILINE)
             gui_match = re.search(r'^\[gui\.py\]\s*$([\s\S]*)\Z', text, re.MULTILINE)
@@ -305,44 +313,6 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
                 return nodes_match.group(1).strip(), gui_match.group(1).strip()
         except Exception:
             pass
-
-        # Heuristic split:
-        # - Identify class definitions and GUI-oriented imports/decorators
-        lines = text.splitlines(True)
-        class_idxs = [i for i, ln in enumerate(lines) if re.match(r'^\s*class\s+\w+', ln)]
-        gui_imp_idx = None
-        for i, ln in enumerate(lines):
-            if re.match(r'^\s*from\s+ryven\.gui_env\s+import\s+\*', ln):
-                gui_imp_idx = i
-                break
-            if re.match(r'^\s*from\s+qtpy\.', ln):
-                gui_imp_idx = i
-                break
-            if re.match(r'^\s*from\s+\.\s+import\s+nodes', ln):
-                gui_imp_idx = i
-                break
-            if re.match(r'^\s*@node_gui\(', ln):
-                gui_imp_idx = i
-                break
-
-        if class_idxs:
-            if len(class_idxs) >= 2:
-                # If we have a GUI import before the second class, prefer to split there
-                if gui_imp_idx is not None and gui_imp_idx > class_idxs[0] and gui_imp_idx < class_idxs[1]:
-                    split_at = gui_imp_idx
-                else:
-                    split_at = class_idxs[1]
-                return ''.join(lines[:split_at]).strip(), ''.join(lines[split_at:]).strip()
-            else:
-                # Single class but GUI imports found later
-                if gui_imp_idx is not None and gui_imp_idx > class_idxs[0]:
-                    split_at = gui_imp_idx
-                    return ''.join(lines[:split_at]).strip(), ''.join(lines[split_at:]).strip()
-
-        # Fallback: naive split if a strong separator pattern exists
-        parts = re.split(r'\n{3,}', text)
-        if len(parts) >= 2:
-            return parts[0], '\n\n'.join(parts[1:])
         return text, ''
 
     def _get_openai_api_key(self) -> str:
