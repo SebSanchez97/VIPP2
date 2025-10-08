@@ -59,13 +59,14 @@ class NodeDeletorNode(Node):
             return []
 
         items = []
-        protected = {'NodeGeneratorNode', 'NodeDeletorNode'}
+        # Do not offer deletion for framework/base nodes
+        protected = {'NodeGeneratorNode', 'NodeDeletorNode', 'ImageNodeBase', 'ImageLoaderNode',}
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
                 # must look like a Node subclass by base name
                 is_node_sub = any(
-                    (isinstance(b, ast.Name) and b.id == 'Node') or
-                    (isinstance(b, ast.Attribute) and b.attr == 'Node')
+                    (isinstance(b, ast.Name) and b.id in ('Node', 'ImageNodeBase')) or
+                    (isinstance(b, ast.Attribute) and b.attr in ('Node', 'ImageNodeBase'))
                     for b in node.bases
                 )
                 if not is_node_sub:
@@ -87,7 +88,8 @@ class NodeDeletorNode(Node):
     def delete_user_node(self, node_identifier: str):
         import ast, datetime, re
 
-        protected = {'NodeGeneratorNode', 'NodeDeletorNode'}
+        # Do not allow deletion of framework/base nodes
+        protected = {'NodeGeneratorNode', 'NodeDeletorNode', 'ImageNodeBase', 'ImageLoaderNode'}
         if not node_identifier or not node_identifier.strip():
             return
         target_name = node_identifier.strip()
