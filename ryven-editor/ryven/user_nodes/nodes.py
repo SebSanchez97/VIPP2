@@ -45,11 +45,6 @@ class ImageNodeBase(Node):
         """
         return img
 
-    def process(self, img):
-        """Legacy hook for older subclasses; prefer `transform`.
-        Kept for backward compatibility with existing nodes.
-        """
-        return img
 
     def params_signature(self):
         """Return a small, hashable summary of parameters.
@@ -141,10 +136,6 @@ class ImageNodeBase(Node):
         except Exception:
             pass
 
-    # Backward-compatible name
-    def emit_preview(self, img):
-        """Compatibility wrapper that delegates to _emit_preview."""
-        self._emit_preview(img)
 
     def set_image_output(self, img):
         """Set output 0 to a Data-wrapped PIL image (or None)."""
@@ -205,13 +196,7 @@ class ImageNodeBase(Node):
 
         try:
             base = self.ensure_rgba(img)
-            # prefer transform; fallback to legacy process
-            use_transform = getattr(self.__class__, 'transform', ImageNodeBase.transform) is not ImageNodeBase.transform
-            if use_transform:
-                out = self.transform(base)
-            else:
-                use_process = getattr(self.__class__, 'process', ImageNodeBase.process) is not ImageNodeBase.process
-                out = self.process(base) if use_process else base
+            out = self.transform(base)
             if out is None:
                 out = base
             out = self.ensure_rgba(out)
