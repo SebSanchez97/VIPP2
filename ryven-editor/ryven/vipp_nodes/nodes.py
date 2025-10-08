@@ -5,7 +5,6 @@ from .code_injection import insert_user_node_code, insert_user_gui_code
 
 BACKUP_ON_DELETE = False
 
-
 def _user_nodes_paths():
     # Resolve sibling package paths for user_nodes
     ryven_dir = os.path.dirname(os.path.dirname(__file__))
@@ -13,7 +12,6 @@ def _user_nodes_paths():
     nodes_path = os.path.join(user_pkg_dir, 'nodes.py')
     gui_path = os.path.join(user_pkg_dir, 'gui.py')
     return nodes_path, gui_path, user_pkg_dir
-
 
 class NodeGeneratorNode(Node):
     title = 'Node Generator'
@@ -36,7 +34,6 @@ class NodeGeneratorNode(Node):
             if err:
                 print(err)
                 return
-
 
 class NodeDeletorNode(Node):
     title = 'Node Deletor'
@@ -62,13 +59,14 @@ class NodeDeletorNode(Node):
             return []
 
         items = []
-        protected = {'NodeGeneratorNode', 'NodeDeletorNode'}
+        # Do not offer deletion for framework/base nodes
+        protected = {'NodeGeneratorNode', 'NodeDeletorNode', 'ImageNodeBase', 'ImageLoaderNode',}
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
                 # must look like a Node subclass by base name
                 is_node_sub = any(
-                    (isinstance(b, ast.Name) and b.id == 'Node') or
-                    (isinstance(b, ast.Attribute) and b.attr == 'Node')
+                    (isinstance(b, ast.Name) and b.id in ('Node', 'ImageNodeBase')) or
+                    (isinstance(b, ast.Attribute) and b.attr in ('Node', 'ImageNodeBase'))
                     for b in node.bases
                 )
                 if not is_node_sub:
@@ -90,7 +88,8 @@ class NodeDeletorNode(Node):
     def delete_user_node(self, node_identifier: str):
         import ast, datetime, re
 
-        protected = {'NodeGeneratorNode', 'NodeDeletorNode'}
+        # Do not allow deletion of framework/base nodes
+        protected = {'NodeGeneratorNode', 'NodeDeletorNode', 'ImageNodeBase', 'ImageLoaderNode'}
         if not node_identifier or not node_identifier.strip():
             return
         target_name = node_identifier.strip()
@@ -246,6 +245,13 @@ class NodeDeletorNode(Node):
                     print(f'Failed to write gui.py: {e}')
                     return
 
+class PromptGeneratorNode(Node):
+    title = 'Prompt Generator'
+    tags = ['dev', 'generator', 'ai']
+    init_outputs = []
+
+    def __init__(self, params):
+        super().__init__(params)
 
 # Export nodes from this module for completeness
 _node_types = []
@@ -258,9 +264,6 @@ for _name, _obj in list(globals().items()):
 
 export_nodes(_node_types)
 
-
 @on_gui_load
 def load_gui():
     from . import gui
-
-

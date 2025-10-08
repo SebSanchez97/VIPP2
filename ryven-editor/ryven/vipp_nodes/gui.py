@@ -1,7 +1,14 @@
 from qtpy.QtWidgets import QSlider, QLineEdit, QTextEdit, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox, QSizePolicy, QComboBox, QMessageBox
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QThread, Signal
 from ryven.gui_env import *
 from . import nodes
+from .openai_worker import OpenAIWorker
+from .code_injection import insert_user_node_code, insert_user_gui_code
+import os
+import json
+import re
+import urllib.request
+import urllib.error
 
 
 class NodeGenerator_MainWidget(NodeMainWidget, QWidget):
@@ -55,13 +62,11 @@ class NodeGenerator_MainWidget(NodeMainWidget, QWidget):
         except Exception as e:
             print(e)
 
-
 @node_gui(nodes.NodeGeneratorNode)
 class NodeGeneratorNodeGui(NodeGUI):
     main_widget_class = NodeGenerator_MainWidget
     main_widget_pos = 'between ports'
     color = '#a3be8c'
-
 
 class NodeDeletor_MainWidget(NodeMainWidget, QWidget):
     def __init__(self, params):
@@ -142,11 +147,236 @@ class NodeDeletor_MainWidget(NodeMainWidget, QWidget):
             print(e)
         self.populate_nodes()
 
-
 @node_gui(nodes.NodeDeletorNode)
 class NodeDeletorNodeGui(NodeGUI):
     main_widget_class = NodeDeletor_MainWidget
     main_widget_pos = 'between ports'
     color = '#bf616a'
 
+class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
+    def __init__(self, params):
+        NodeMainWidget.__init__(self, params)
+        QWidget.__init__(self)
 
+        # Top: node name textbox
+        self.name_edit = QLineEdit(self)
+        self.name_edit.setPlaceholderText('Name your node')
+        self.name_edit.textChanged.connect(self.on_name_changed)
+
+        # Left: prompt editor + Generate button
+        self.prompt_edit = QTextEdit(self)
+        self.prompt_edit.setPlaceholderText('Write your prompt here...')
+        self.prompt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.generate_btn = QPushButton('Generate', self)
+        self.generate_btn.clicked.connect(self.on_generate)
+
+        left_v = QVBoxLayout()
+        left_v.setContentsMargins(6, 6, 6, 6)
+        left_v.addWidget(self.prompt_edit, 1)
+        left_v.addWidget(self.generate_btn, 0)
+
+        left_group = QGroupBox('Prompt', self)
+        left_group.setLayout(left_v)
+
+        # Center: logic code + Create button
+        self.logic_edit = QTextEdit(self)
+        self.logic_edit.setPlaceholderText('Generated logic code (nodes.py)')
+        self.logic_edit.setReadOnly(True)
+        self.logic_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.create_logic_btn = QPushButton('Create', self)
+        self.create_logic_btn.clicked.connect(self.on_create_logic)
+
+        center_v = QVBoxLayout()
+        center_v.setContentsMargins(6, 6, 6, 6)
+        center_v.addWidget(self.logic_edit, 1)
+        center_v.addWidget(self.create_logic_btn, 0)
+
+        center_group = QGroupBox('Logic (nodes.py)', self)
+        center_group.setLayout(center_v)
+
+        # Right: GUI code + Create button
+        self.gui_edit = QTextEdit(self)
+        self.gui_edit.setPlaceholderText('Generated GUI code (gui.py)')
+        self.gui_edit.setReadOnly(True)
+        self.gui_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.create_gui_btn = QPushButton('Create', self)
+        self.create_gui_btn.clicked.connect(self.on_create_gui)
+
+        right_v = QVBoxLayout()
+        right_v.setContentsMargins(6, 6, 6, 6)
+        right_v.addWidget(self.gui_edit, 1)
+        right_v.addWidget(self.create_gui_btn, 0)
+
+        right_group = QGroupBox('GUI (gui.py)', self)
+        right_group.setLayout(right_v)
+
+        # Row with three panels
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(left_group, 1)
+        row.addWidget(center_group, 1)
+        row.addWidget(right_group, 1)
+
+        # Root layout
+        root = QVBoxLayout()
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(self.name_edit)
+        root.addLayout(row)
+        self.setLayout(root)
+
+    def on_name_changed(self, text: str):
+        # Update node title display live (non-persistent)
+        try:
+            self.node.title = text or 'Prompt Generator'
+            self.update_node()
+        except Exception:
+            pass
+
+    def on_generate(self):
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            template_path = os.path.join(base_dir, 'promt_template.txt')
+
+            # Read template
+            try:
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    template = f.read()
+            except Exception as e:
+                print(f'Failed to read template: {e}')
+                return
+
+            node_name = (self.name_edit.text() or 'Prompt Generator').strip()
+            user_prompt = self.prompt_edit.toPlainText().strip()
+
+            # Fill placeholders
+            filled = (
+                template
+                .replace('{{NODE_NAME}}', node_name)
+                .replace('{{CLASS_NAME}}', ''.join(ch for ch in node_name.title() if ch.isalnum()) + 'Node')
+                .replace('{{USER_PROMPT}}', user_prompt)
+            )
+
+            # Print composed prompt for verification
+            print('\n=== Composed LLM Prompt Start ===\n')
+            print(filled)
+            print('\n=== Composed LLM Prompt End ===\n')
+
+            api_key = self._get_openai_api_key()
+            if not api_key:
+                print('Missing OPENAI_API_KEY (environment or .env).')
+                return
+
+            # Launch background worker to call OpenAI API
+            self.generate_btn.setEnabled(False)
+            self.generate_btn.setText('Generating...')
+            self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o', temperature=0.0)
+            self._worker.finished.connect(self.on_llm_finished)
+            self._worker.errored.connect(self.on_llm_error)
+            self._worker.start()
+        except Exception as e:
+            print(e)
+
+    def on_llm_finished(self, content: str):
+        # Log raw LLM output for inspection
+        try:
+            print('\n=== LLM Raw Output Start ===\n')
+            print(content)
+            print('\n=== LLM Raw Output End ===\n')
+        except Exception:
+            pass
+        # Parse JSON first (strict mode). Expect keys: class_name, nodes_py, gui_py
+        logic = ''
+        gui = ''
+        try:
+            obj = json.loads(content)
+            logic = (obj.get('nodes_py') or '').strip()
+            gui = (obj.get('gui_py') or '').strip()
+        except Exception:
+            # Fallback to legacy heuristic ONLY if JSON is not returned
+            logic, gui = self._parse_generated(content)
+        self.logic_edit.setPlainText(logic)
+        self.gui_edit.setPlainText(gui)
+        self.generate_btn.setEnabled(True)
+        self.generate_btn.setText('Generate')
+
+    def on_llm_error(self, err: str):
+        print(f'OpenAI error: {err}')
+        self.generate_btn.setEnabled(True)
+        self.generate_btn.setText('Generate')
+
+    def _parse_generated(self, text: str) -> tuple[str, str]:
+        # Legacy fallback splitter retained for non-JSON outputs during development
+        try:
+            nodes_match = re.search(r'^\[nodes\.py\]\s*$([\s\S]*?)(?=^\[gui\.py\]\s*$)', text, re.MULTILINE)
+            gui_match = re.search(r'^\[gui\.py\]\s*$([\s\S]*)\Z', text, re.MULTILINE)
+            if nodes_match and gui_match:
+                return nodes_match.group(1).strip(), gui_match.group(1).strip()
+        except Exception:
+            pass
+        return text, ''
+
+    def _get_openai_api_key(self) -> str:
+        key = os.environ.get('OPENAI_API_KEY')
+        if key:
+            return key
+        # Fallback: try to read from a .env file upwards from this directory
+        try:
+            dir_path = os.path.dirname(os.path.abspath(__file__))
+            for _ in range(6):
+                env_path = os.path.join(dir_path, '.env')
+                if os.path.isfile(env_path):
+                    try:
+                        with open(env_path, 'r', encoding='utf-8') as f:
+                            for line in f:
+                                line = line.strip()
+                                if not line or line.startswith('#'):
+                                    continue
+                                if '=' in line:
+                                    k, v = line.split('=', 1)
+                                    k = k.strip()
+                                    v = v.strip().strip('"\'')
+                                    if k == 'OPENAI_API_KEY' and v:
+                                        return v
+                    except Exception:
+                        pass
+                parent = os.path.dirname(dir_path)
+                if parent == dir_path:
+                    break
+                dir_path = parent
+        except Exception:
+            pass
+        return ''
+
+    def on_create_logic(self):
+        try:
+            code = self.logic_edit.toPlainText()
+            if not code.strip():
+                print('No logic code to create.')
+                return
+            err = insert_user_node_code(__file__, code)
+            if err:
+                print(err)
+                return
+            print('Logic code inserted into user_nodes/nodes.py')
+        except Exception as e:
+            print(e)
+
+    def on_create_gui(self):
+        try:
+            code = self.gui_edit.toPlainText()
+            if not code.strip():
+                print('No GUI code to create.')
+                return
+            err = insert_user_gui_code(__file__, code)
+            if err:
+                print(err)
+                return
+            print('GUI code inserted into user_nodes/gui.py')
+        except Exception as e:
+            print(e)
+
+@node_gui(nodes.PromptGeneratorNode)
+class PromptGeneratorGui(NodeGUI):
+    main_widget_class = PromptGenerator_MainWidget
+    main_widget_pos = 'between ports'
+    color = '#6a9bd8'
