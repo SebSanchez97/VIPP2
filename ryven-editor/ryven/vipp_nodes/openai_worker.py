@@ -14,6 +14,7 @@ class OpenAIWorker(QThread):
         self.api_key = api_key
         self.model = model
         self.temperature = temperature
+        print("GPT-4o IN USE")
 
     def run(self):
         try:

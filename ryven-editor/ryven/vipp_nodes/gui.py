@@ -164,6 +164,10 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         self.name_edit.setPlaceholderText('Name your node')
         self.name_edit.textChanged.connect(self.on_name_changed)
 
+        # Model selection
+        self.model_combo = QComboBox(self)
+        self.model_combo.addItems(['gpt-4o', 'gpt-5'])
+
         # Left: prompt editor + Generate button
         self.prompt_edit = QTextEdit(self)
         self.prompt_edit.setPlaceholderText('Write your prompt here...')
@@ -221,7 +225,12 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         # Root layout
         root = QVBoxLayout()
         root.setContentsMargins(0, 0, 0, 0)
-        root.addWidget(self.name_edit)
+        name_row = QHBoxLayout()
+        name_row.setContentsMargins(0, 0, 0, 0)
+        name_row.addWidget(self.name_edit, 1)
+        name_row.addWidget(QLabel('Model:', self), 0)
+        name_row.addWidget(self.model_combo, 0)
+        root.addLayout(name_row)
         root.addLayout(row)
         self.setLayout(root)
 
@@ -270,7 +279,11 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
             # Launch background worker to call OpenAI API
             self.generate_btn.setEnabled(False)
             self.generate_btn.setText('Generating...')
-            self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o', temperature=0.0)
+            selected_model = self.model_combo.currentText().strip()
+            if selected_model == 'gpt-5':
+                self._worker = OpenAIWorkerGpt5(prompt=filled, api_key=api_key, model='gpt-5', temperature=0.0)
+            else:
+                self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o', temperature=0.0)
             self._worker.finished.connect(self.on_llm_finished)
             self._worker.errored.connect(self.on_llm_error)
             self._worker.start()
@@ -381,52 +394,3 @@ class PromptGeneratorGui(NodeGUI):
     main_widget_class = PromptGenerator_MainWidget
     main_widget_pos = 'between ports'
     color = '#6a9bd8'
-
-
-class PromptGeneratorGpt5_MainWidget(PromptGenerator_MainWidget):
-    def on_generate(self):
-        try:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            template_path = os.path.join(base_dir, 'promt_template.txt')
-
-            try:
-                with open(template_path, 'r', encoding='utf-8') as f:
-                    template = f.read()
-            except Exception as e:
-                print(f'Failed to read template: {e}')
-                return
-
-            node_name = (self.name_edit.text() or 'Prompt Generator').strip()
-            user_prompt = self.prompt_edit.toPlainText().strip()
-
-            filled = (
-                template
-                .replace('{{NODE_NAME}}', node_name)
-                .replace('{{CLASS_NAME}}', ''.join(ch for ch in node_name.title() if ch.isalnum()) + 'Node')
-                .replace('{{USER_PROMPT}}', user_prompt)
-            )
-
-            print('\n=== Composed LLM Prompt Start ===\n')
-            print(filled)
-            print('\n=== Composed LLM Prompt End ===\n')
-
-            api_key = self._get_openai_api_key()
-            if not api_key:
-                print('Missing OPENAI_API_KEY (environment or .env).')
-                return
-
-            self.generate_btn.setEnabled(False)
-            self.generate_btn.setText('Generating...')
-            self._worker = OpenAIWorkerGpt5(prompt=filled, api_key=api_key, model='gpt-5', temperature=0.0)
-            self._worker.finished.connect(self.on_llm_finished)
-            self._worker.errored.connect(self.on_llm_error)
-            self._worker.start()
-        except Exception as e:
-            print(e)
-
-
-@node_gui(nodes.PromptGeneratorGpt5Node)
-class PromptGeneratorGpt5Gui(NodeGUI):
-    main_widget_class = PromptGeneratorGpt5_MainWidget
-    main_widget_pos = 'between ports'
-    color = '#4f8cc9'

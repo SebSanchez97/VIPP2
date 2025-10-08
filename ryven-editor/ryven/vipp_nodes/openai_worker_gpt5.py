@@ -15,6 +15,7 @@ class OpenAIWorkerGpt5(QThread):
         self.api_key = api_key
         self.model = model
         self.temperature = temperature
+        print("GPT-5 IN USE")
 
     def run(self):
         try:

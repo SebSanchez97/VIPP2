@@ -254,13 +254,6 @@ class PromptGeneratorNode(Node):
         super().__init__(params)
 
 
-class PromptGeneratorGpt5Node(Node):
-    title = 'Prompt Generator (GPT-5)'
-    tags = ['dev', 'generator', 'ai']
-    init_outputs = []
-
-    def __init__(self, params):
-        super().__init__(params)
 
 # Export nodes from this module for completeness
 _node_types = []
