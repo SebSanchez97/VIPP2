@@ -299,45 +299,4 @@ class ImageLoaderNodeGui(NodeGUI):
 
 ### USER GUIS BEGIN ###
 
-
-
-
-
-
-
-from ryven.gui_env import *
-from . import nodes
-from qtpy.QtWidgets import QSlider, QLabel, QHBoxLayout, QWidget
-from qtpy.QtCore import Qt
-
-class GaussianBlurNode_MainWidget(ImageNodeGuiBase):
-    def __init__(self, params):
-        ImageNodeGuiBase.__init__(self, params)
-        self.radius_slider = self.add_slider(0, 500, 20, on_change=self._on_radius)
-        self.controls.addWidget(QLabel('Radius'))
-        self.controls.addWidget(self.radius_slider)
-        self.sigma_slider = QSlider(Qt.Horizontal)
-        self.sigma_slider.setMinimum(0)
-        self.sigma_slider.setMaximum(500)
-        self.sigma_slider.setValue(0)
-        self.sigma_slider.valueChanged.connect(self._on_sigma)
-        row = QWidget()
-        lay = QHBoxLayout(row)
-        lay.setContentsMargins(0,0,0,0)
-        lay.addWidget(QLabel('Sigma (0=auto)'))
-        lay.addWidget(self.sigma_slider)
-        self.controls.addWidget(row)
-
-    def _on_radius(self, v):
-        self.node.set_radius(v/10.0)
-
-    def _on_sigma(self, v):
-        self.node.set_sigma(v/10.0)
-
-@node_gui(nodes.GaussianBlurNode)
-class GaussianBlurNodeGui(NodeGUI):
-    main_widget_class = GaussianBlurNode_MainWidget
-    main_widget_pos = 'between ports'
-    color = '#6ba4d9'
-
 ### USER GUIS END ###
