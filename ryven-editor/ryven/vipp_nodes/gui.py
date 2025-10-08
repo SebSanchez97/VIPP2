@@ -3,6 +3,7 @@ from qtpy.QtCore import Qt, QThread, Signal
 from ryven.gui_env import *
 from . import nodes
 from .openai_worker import OpenAIWorker
+from .openai_worker_gpt5 import OpenAIWorkerGpt5
 from .code_injection import insert_user_node_code, insert_user_gui_code
 import os
 import json
@@ -163,6 +164,10 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         self.name_edit.setPlaceholderText('Name your node')
         self.name_edit.textChanged.connect(self.on_name_changed)
 
+        # Model selection
+        self.model_combo = QComboBox(self)
+        self.model_combo.addItems(['gpt-4o', 'gpt-5'])
+
         # Left: prompt editor + Generate button
         self.prompt_edit = QTextEdit(self)
         self.prompt_edit.setPlaceholderText('Write your prompt here...')
@@ -220,7 +225,12 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
         # Root layout
         root = QVBoxLayout()
         root.setContentsMargins(0, 0, 0, 0)
-        root.addWidget(self.name_edit)
+        name_row = QHBoxLayout()
+        name_row.setContentsMargins(0, 0, 0, 0)
+        name_row.addWidget(self.name_edit, 1)
+        name_row.addWidget(QLabel('Model:', self), 0)
+        name_row.addWidget(self.model_combo, 0)
+        root.addLayout(name_row)
         root.addLayout(row)
         self.setLayout(root)
 
@@ -269,7 +279,11 @@ class PromptGenerator_MainWidget(NodeMainWidget, QWidget):
             # Launch background worker to call OpenAI API
             self.generate_btn.setEnabled(False)
             self.generate_btn.setText('Generating...')
-            self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o', temperature=0.0)
+            selected_model = self.model_combo.currentText().strip()
+            if selected_model == 'gpt-5':
+                self._worker = OpenAIWorkerGpt5(prompt=filled, api_key=api_key, model='gpt-5', temperature=0.0)
+            else:
+                self._worker = OpenAIWorker(prompt=filled, api_key=api_key, model='gpt-4o', temperature=0.0)
             self._worker.finished.connect(self.on_llm_finished)
             self._worker.errored.connect(self.on_llm_error)
             self._worker.start()

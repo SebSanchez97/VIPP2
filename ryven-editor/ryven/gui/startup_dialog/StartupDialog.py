@@ -416,6 +416,9 @@ class StartupDialog(QDialog):
 
         # Set requested nodes
         self.update_packages_lists()
+        
+        # Auto-import user_nodes and vipp_nodes packages
+        self.auto_import_default_packages()
 
         # Set window theme
         for theme, rb in self.window_theme_rbs.items():
@@ -426,7 +429,7 @@ class StartupDialog(QDialog):
             rb.setChecked(self.conf.performance_mode == mode)
 
         # Set animations
-        animations_cb.setChecked(self.conf.animations)
+        # animations_cb.setChecked(self.conf.animations)
 
         # Set title
         self.title_lineedit.setText(self.conf.window_title)
@@ -753,6 +756,33 @@ class StartupDialog(QDialog):
             self.ok_button.setToolTip(None)
             self.autodiscover_packages_button.setEnabled(False)
         self.clear_packages_button.setEnabled(bool(self.conf.nodes))
+
+    def auto_import_default_packages(self):
+        """Automatically import user_nodes and vipp_nodes packages if they exist."""
+        # Get the path to the ryven directory
+        ryven_dir = pathlib.Path(abs_path_from_package_dir(''))
+        
+        # Define the packages to auto-import
+        default_packages = ['user_nodes', 'vipp_nodes']
+        
+        for package_name in default_packages:
+            package_path = ryven_dir / package_name
+            
+            # Check if the package directory exists and contains nodes.py
+            if package_path.exists() and (package_path / 'nodes.py').exists():
+                # Check if this package is not already imported
+                package_already_imported = False
+                for existing_pkg in self.conf.nodes:
+                    if existing_pkg.name == package_name or str(existing_pkg) == str(package_path):
+                        package_already_imported = True
+                        break
+                
+                # Add the package if it's not already imported
+                if not package_already_imported:
+                    self.conf.nodes.add(package_path)
+        
+        # Update the packages lists to reflect the auto-imported packages
+        self.update_packages_lists()
 
     def gen_config_clicked(self):
         """Generates the command analogous to the specified settings
