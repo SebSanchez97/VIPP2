@@ -282,6 +282,33 @@ class ImageLoaderNode(Node):
 
 ### USER NODES BEGIN ###
 
+from ryven.node_env import *
+
+class GaussianBlurNode(ImageNodeBase):
+    title = 'Gaussian Blur'
+    tags = ['image', 'blur', 'gaussian', 'generated']
+
+    def __init__(self, params):
+        super().__init__(params)
+        self._radius = 2.0
+        self._sigma = 0.0
+
+    def set_radius(self, v: float):
+        self._radius = self.clamp(v, 0.0, 1000.0)
+        self.update()
+
+    def set_sigma(self, v: float):
+        self._sigma = self.clamp(v, 0.0, 1000.0)
+        self.update()
+
+    def transform(self, img):
+        from PIL import ImageFilter
+        r = float(self._radius)
+        s = float(self._sigma) if self._sigma > 0 else None
+        if s is None:
+            return img.filter(ImageFilter.GaussianBlur(radius=r))
+        return img.filter(ImageFilter.GaussianBlur(radius=r))
+
 ### USER NODES END ###
 
 
