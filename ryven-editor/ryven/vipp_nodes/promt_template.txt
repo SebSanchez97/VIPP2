@@ -15,24 +15,28 @@ Rules:
   - define class {{CLASS_NAME}}(ImageNodeBase) with:
     - title = '{{NODE_NAME}}'
     - tags including 'generated'
-    - optional setters (e.g., set_factor) that call self.update()
-    - override: def process(self, img): return a PIL.Image.Image (RGBA)
-  - Do NOT implement custom preview wiring; ImageNodeBase handles preview and IO.
+    - private parameter fields and setters that call self.update()
+    - implement: def transform(self, img) -> PIL.Image.Image (RGBA)
+  - Do NOT override init_inputs, init_outputs, update_event, or preview; ImageNodeBase handles IO, caching, and preview.
+  - No file/network I/O; operate only on the input PIL image.
+  - Allowed imports inside transform: PIL.* and Python stdlib; no third-party except PIL.
 - gui_py MUST:
   - import exactly:
     - from ryven.gui_env import *
     - from . import nodes
     - qtpy widgets/types as needed (e.g., QSlider, Qt)
-  - define class {{CLASS_NAME}}_MainWidget(ImageNodeGuiBase) and add UI controls in __init__ that call node setters and trigger update.
-  - decorate the GUI class (not the widget) with @node_gui(nodes.{{CLASS_NAME}}) and define NodeGUI using main_widget_class = {{CLASS_NAME}}_MainWidget.
-- Image contract: images are passed as Data(PIL.Image); always work in RGBA inside process().
-- No file/network I/O in generated code.
+  - define class {{CLASS_NAME}}_MainWidget(ImageNodeGuiBase).
+  - Add any controls under self.controls (e.g., sliders, combos, checkboxes, spinboxes), wiring them to node setters.
+  - You may use helper methods: add_slider(min,max,val,on_change), add_checkbox(text,checked,on_change), add_combo(items,index,on_change), or construct widgets manually and add with self.controls.addWidget(...).
+  - Do NOT implement image preview; ImageNodeGuiBase manages preview.
+- Image contract: the base passes a PIL.Image in RGBA; return RGBA from transform().
+- No threads, no network, no file dialogs.
 
 Example JSON (structure guidance; adapt names and details to the user request):
 {
   "class_name": "BrightnessNode",
-  "nodes_py": "from ryven.node_env import *\n\nclass BrightnessNode(ImageNodeBase):\n    title = 'Brightness'\n    tags = ['image', 'generated']\n\n    def __init__(self, params):\n        super().__init__(params)\n        self._factor = 1.0\n\n    def set_factor(self, v: float):\n        self._factor = max(0.0, min(3.0, float(v)))\n        self.update()\n\n    def process(self, img):\n        from PIL import ImageEnhance\n        return ImageEnhance.Brightness(img).enhance(self._factor)\n",
-  "gui_py": "from ryven.gui_env import *\nfrom . import nodes\nfrom qtpy.QtWidgets import QSlider\nfrom qtpy.QtCore import Qt\n\nclass BrightnessNode_MainWidget(ImageNodeGuiBase):\n    def __init__(self, params):\n        ImageNodeGuiBase.__init__(self, params)\n        self.slider = QSlider(Qt.Horizontal, self)\n        self.slider.setRange(0, 300)\n        self.slider.setValue(100)\n        self.slider.valueChanged.connect(lambda v: self.node.set_factor(v/100.0))\n        self.layout().addWidget(self.slider, 0)\n\n@node_gui(nodes.BrightnessNode)\nclass BrightnessNodeGui(NodeGUI):\n    main_widget_class = BrightnessNode_MainWidget\n    main_widget_pos = 'between ports'\n    color = '#5fb36b'\n"
+  "nodes_py": "from ryven.node_env import *\n\nclass BrightnessNode(ImageNodeBase):\n    title = 'Brightness'\n    tags = ['image', 'generated']\n\n    def __init__(self, params):\n        super().__init__(params)\n        self._factor = 1.0\n\n    def set_factor(self, v: float):\n        self._factor = self.clamp(v, 0.0, 3.0)\n        self.update()\n\n    def transform(self, img):\n        from PIL import ImageEnhance\n        return ImageEnhance.Brightness(img).enhance(self._factor)\n",
+  "gui_py": "from ryven.gui_env import *\nfrom . import nodes\nfrom qtpy.QtWidgets import QSlider\nfrom qtpy.QtCore import Qt\n\nclass BrightnessNode_MainWidget(ImageNodeGuiBase):\n    def __init__(self, params):\n        ImageNodeGuiBase.__init__(self, params)\n        self.slider = self.add_slider(0, 300, 100, on_change=lambda v: self.node.set_factor(v/100.0))\n\n@node_gui(nodes.BrightnessNode)\nclass BrightnessNodeGui(NodeGUI):\n    main_widget_class = BrightnessNode_MainWidget\n    main_widget_pos = 'between ports'\n    color = '#5fb36b'\n"
 }
 
 User request (for the node’s behavior and UI):
