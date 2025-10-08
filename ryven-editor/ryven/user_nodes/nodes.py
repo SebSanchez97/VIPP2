@@ -16,6 +16,10 @@ class ImageNodeBase(Node):
     init_outputs = [NodeOutputType('image')]
 
     def __init__(self, params):
+        """Initialize cache, GUI-connection state, and preview throttling.
+        Creates a Qt signal emitter when a GUI session is active so that
+        processed previews can be forwarded to the node GUI widget.
+        """
         super().__init__(params)
         self._last = None
         self._last_in_sig = None
@@ -35,11 +39,16 @@ class ImageNodeBase(Node):
     # ---------- Subclass API ----------
 
     def transform(self, img):
-        """Override in subclasses. Must return a PIL.Image.Image in RGBA mode."""
+        """Subclass hook: implement image processing here.
+        Must return a PIL.Image.Image in RGBA mode. If not overridden,
+        the image is passed through unchanged.
+        """
         return img
 
     def process(self, img):
-        """Legacy hook for older subclasses; prefer `transform`."""
+        """Legacy hook for older subclasses; prefer `transform`.
+        Kept for backward compatibility with existing nodes.
+        """
         return img
 
     def params_signature(self):
@@ -63,6 +72,10 @@ class ImageNodeBase(Node):
     # ---------- Helpers ----------
 
     def input_image(self):
+        """Read input 0 and normalize it to a PIL RGBA image.
+        Accepts either a Data-wrapped PIL image, a bare PIL image, or a
+        filesystem path string to an image. Returns None if unavailable.
+        """
         payload = None if self.input(0) is None else self.input(0).payload
         obj = payload.payload if hasattr(payload, 'payload') else payload
         if obj is None:
@@ -81,12 +94,14 @@ class ImageNodeBase(Node):
         return None
 
     def ensure_rgba(self, img):
+        """Best-effort conversion to RGBA; returns input unchanged on failure."""
         try:
             return img.convert('RGBA')
         except Exception:
             return img
 
     def clamp(self, v, lo, hi):
+        """Clamp numeric value v to the inclusive range [lo, hi]."""
         try:
             v = float(v)
         except Exception:
@@ -98,6 +113,7 @@ class ImageNodeBase(Node):
         return v
 
     def _to_qimage(self, img):
+        """Convert a PIL RGBA image to a Qt QImage (deep-copied)."""
         try:
             from qtpy.QtGui import QImage
             w, h = img.size
@@ -107,6 +123,10 @@ class ImageNodeBase(Node):
             return None
 
     def _emit_preview(self, img_or_none):
+        """Emit a GUI preview via Qt signal, throttled to ~33 FPS.
+        If no GUI session exists, this is a no-op. Emits None to clear the
+        preview when no image is available.
+        """
         if not self.session.gui:
             return
         now = time.monotonic()
@@ -123,14 +143,19 @@ class ImageNodeBase(Node):
 
     # Backward-compatible name
     def emit_preview(self, img):
+        """Compatibility wrapper that delegates to _emit_preview."""
         self._emit_preview(img)
 
     def set_image_output(self, img):
+        """Set output 0 to a Data-wrapped PIL image (or None)."""
         self.set_output_val(0, Data(img) if img is not None else None)
 
     # ---------- Lifecycle ----------
 
     def view_place_event(self):
+        """Called when the node is placed in the view.
+        Connects the preview signal to the GUI widget and triggers an update.
+        """
         if not self.session.gui:
             return
         try:
@@ -141,6 +166,7 @@ class ImageNodeBase(Node):
         self.update()
 
     def _ensure_gui_connection(self):
+        """Ensure the preview signal is connected to the GUI widget."""
         if self.session.gui and not self._gui_connected and hasattr(self, 'gui') and self.gui:
             try:
                 self.SIGNALS.new_qimage.connect(self.gui.main_widget().show_qimage)
@@ -149,8 +175,13 @@ class ImageNodeBase(Node):
                 pass
 
     def update_event(self, inp=-1):
+        """Main compute step: read input, apply transform/process, cache, output, preview.
+        Skips recomputation when both input and parameter signatures match the
+        previous run. Always keeps outputs in RGBA mode for consistency.
+        """
         img = self.input_image()
         if img is None:
+            # No input: clear caches, output None, and clear the preview
             self._last = None
             self.set_image_output(None)
             if self.session.gui:
@@ -159,10 +190,13 @@ class ImageNodeBase(Node):
             return
 
         # cache signatures
+        # input signature captures identity and basic image shape/format
         in_sig = (id(img), getattr(img, 'size', None), getattr(img, 'mode', None))
+        # parameter signature captures relevant private primitives
         param_sig = self.params_signature()
 
         if self._last is not None and in_sig == self._last_in_sig and param_sig == self._last_param_sig:
+            # Nothing changed: reuse cached result and re-emit preview
             self.set_image_output(self._last)
             if self.session.gui:
                 self._ensure_gui_connection()
@@ -184,6 +218,7 @@ class ImageNodeBase(Node):
         except Exception:
             out = None
 
+        # Update caches and propagate outputs/preview
         self._last = out
         self._last_in_sig = in_sig
         self._last_param_sig = param_sig
@@ -193,6 +228,7 @@ class ImageNodeBase(Node):
         self._emit_preview(out)
 
     def get_last_processed(self):
+        """Return the last processed PIL image (or None)."""
         return self._last
 
 class ImageLoaderNode(Node):
@@ -249,9 +285,38 @@ class ImageLoaderNode(Node):
 
 
 
+
+
+
+
+
+
+
+
+
+
 ### USER NODES BEGIN ###
 
 ### USER NODES END ###
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # auto-discover Node subclasses (so appended classes are exported too)
 _node_types = []
