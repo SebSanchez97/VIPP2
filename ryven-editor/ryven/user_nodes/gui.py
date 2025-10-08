@@ -38,7 +38,7 @@ class ImageNodeGuiBase(NodeMainWidget, QWidget):
         # Create preview label for displaying processed images
         self.preview = QLabel(self)
         self.preview.setAlignment(Qt.AlignCenter)  # Center the image in the label
-        self.preview.setMinimumHeight(160)  # Ensure minimum preview size
+        self.preview.setMinimumHeight(300)  # Ensure larger minimum preview size
         # Make preview expand to fill available space
         self.preview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -72,6 +72,14 @@ class ImageNodeGuiBase(NodeMainWidget, QWidget):
                 self.node.update()
             except Exception:
                 pass
+
+    def sizeHint(self):
+        # Provide a larger default size so nodes appear bigger by default
+        try:
+            from qtpy.QtCore import QSize
+            return QSize(380, 460)
+        except Exception:
+            return super().sizeHint()
 
     # ========== HELPER METHODS FOR COMMON CONTROLS ==========
     # These methods provide convenient ways to add standard controls to the GUI
@@ -201,7 +209,7 @@ class ImageLoaderNode_MainWidget(NodeMainWidget, QWidget):
 
         self.preview = QLabel(self)
         self.preview.setAlignment(Qt.AlignCenter)
-        self.preview.setMinimumHeight(160)
+        self.preview.setMinimumHeight(300)
         self.preview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.preview.setText('No image')
 
@@ -215,6 +223,13 @@ class ImageLoaderNode_MainWidget(NodeMainWidget, QWidget):
             self._refresh_preview(self.node.path())
         except Exception:
             pass
+
+    def sizeHint(self):
+        try:
+            from qtpy.QtCore import QSize
+            return QSize(380, 460)
+        except Exception:
+            return super().sizeHint()
 
     def on_import(self):
         try:

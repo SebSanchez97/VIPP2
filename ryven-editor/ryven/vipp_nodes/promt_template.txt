@@ -31,6 +31,7 @@ Rules:
   - Do NOT implement image preview; ImageNodeGuiBase manages preview.
 - Image contract: the base passes a PIL.Image in RGBA; return RGBA from transform().
 - No threads, no network, no file dialogs.
+- Label all of the GUI elements that control node parameters
 
 Example JSON (structure guidance; adapt names and details to the user request):
 {
