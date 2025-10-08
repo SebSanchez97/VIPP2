@@ -429,7 +429,7 @@ class StartupDialog(QDialog):
             rb.setChecked(self.conf.performance_mode == mode)
 
         # Set animations
-        animations_cb.setChecked(self.conf.animations)
+        # animations_cb.setChecked(self.conf.animations)
 
         # Set title
         self.title_lineedit.setText(self.conf.window_title)
